@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hazelcast xsi:schemaLocation="http://www.hazelcast.com/schema/config http://www.hazelcast.com/schema/config/hazelcast-config-3.2.xsd"
+           xmlns="http://www.hazelcast.com/schema/config"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <group>
+        <name>test-hazelcast-locks</name>
+        <password>thoughtwire</password>
+    </group>
+
+    <!--<properties>-->
+        <!--<property name="hazelcast.operation.call.timeout.millis">1000</property>-->
+    <!--</properties>-->
+
+    <network>
+        <port auto-increment="true">5803</port>
+        <join>
+            <multicast enabled="false"/>
+            <tcp-ip enabled="true">
+                <member>localhost:5800</member>
+                <member>localhost:5803</member>
+            </tcp-ip>
+        </join>
+    </network>
+
+</hazelcast>
