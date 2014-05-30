@@ -1,0 +1,39 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>ca.thoughtwire</groupId>
+  <artifactId>hazelcast-locks</artifactId>
+  <version>1.0-1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>hazelcast-locks</name>
+
+
+  <properties>
+	<com.hazelcast.version>3.2</com.hazelcast.version>
+    <maven-release-plugin.tagbase.groupidsuffix>core/grid</maven-release-plugin.tagbase.groupidsuffix>
+    <maven-compiler-plugin.source.version>1.6</maven-compiler-plugin.source.version>
+    <maven-compiler-plugin.target.version>1.6</maven-compiler-plugin.target.version>
+  </properties>
+
+  <dependencies>
+
+      <dependency>
+		<groupId>com.hazelcast</groupId>
+		<artifactId>hazelcast</artifactId>
+		<version>${com.hazelcast.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <scope>compile</scope>  <!-- need this to compile DistributedLockUtils -->
+      </dependency>
+      <dependency>
+        <groupId>org.easymock</groupId>
+        <artifactId>easymock</artifactId>
+      </dependency>
+
+  </dependencies>
+
+</project>
