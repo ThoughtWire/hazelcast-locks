@@ -16,7 +16,8 @@ with the exception of creation of a new lock instance.
 
 ```java
 // This can be a singleton, but additional instances aren't a problem.
-DistributedLockFactory lockFactory = new DistributedLockFactory(new HazelcastDataStructureFactory(hazelcastInstance));
+DistributedLockFactory lockFactory =
+    new DistributedLockFactory(new HazelcastDataStructureFactory(hazelcastInstance));
 
 ReadWriteLock lock = lockFactory.getReentrantReadWriteLock("myLock");
 lock.readLock().lock();
