@@ -48,6 +48,90 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     }
 
     /**
+     * write-lockInterruptibly is interruptible
+     */
+    @Test
+    public void testWriteLockInterruptibly_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.writeLock().lockInterruptibly();
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * read-lockInterruptibly is interruptible
+     */
+    @Test
+    public void testReadLockInterruptibly_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.readLock().lockInterruptibly();
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try read-lock is interruptible
+     */
+    @Test
+    public void testTryReadLock_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.readLock().tryLock(4 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try write-lock is interruptible
+     */
+    @Test
+    public void testTryWriteLock_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.writeLock().tryLock(4 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t);
+        lock.writeLock().unlock();
+    }
+
+    /**
      * write-unlocking an unlocked lock throws IllegalMonitorStateException
      */
     @Test (expected = IllegalMonitorStateException.class)
@@ -477,20 +561,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
         awaitTermination(t);
         assertTrue(((PublicDistributedReentrantReadWriteLock.WriteLock)lock.writeLock()).isHeldByCurrentThread());
         lock.writeLock().unlock();
-    }
-
-    @Test (expected = UnsupportedOperationException.class)
-    public void testReadLock_interruptiblyNotSupported() throws InterruptedException {
-        final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
-        lock.readLock().lockInterruptibly();
-    }
-
-    @Test (expected = UnsupportedOperationException.class)
-    public void testWriteLock_interruptiblyNotSupported() throws InterruptedException {
-        final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
-        lock.writeLock().lockInterruptibly();
     }
 
     @Test (expected = UnsupportedOperationException.class)

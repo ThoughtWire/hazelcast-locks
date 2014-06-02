@@ -28,8 +28,8 @@ public class DistributedReentrantReadWriteLockIT extends DistributedLockUtils {
         final Config standardConfig1 = new ClasspathXmlConfig("hazelcast1.xml"),
                 standardConfig2 = new ClasspathXmlConfig("hazelcast2.xml");
 
-        standardConfig1.setProperty("hazelcast.operation.call.timeout.millis", "4000");
-        standardConfig2.setProperty("hazelcast.operation.call.timeout.millis", "4000");
+        standardConfig1.setProperty("hazelcast.operation.call.timeout.millis", "1000");
+        standardConfig2.setProperty("hazelcast.operation.call.timeout.millis", "1000");
         grid1 = Hazelcast.newHazelcastInstance(standardConfig1);
         grid2 = Hazelcast.newHazelcastInstance(standardConfig2);
 
@@ -65,6 +65,92 @@ public class DistributedReentrantReadWriteLockIT extends DistributedLockUtils {
         lock.readLock().unlock();
         assertNotWriteLocked(lock);
         assertHoldCount(lock, 0);
+    }
+
+    /**
+     * write-lockInterruptibly is interruptible
+     * Note: you may have to adjust the property hazelcast.operation.call.timeout.millis to <2000 ms. Default is 120s!
+     */
+    @Test
+    public void testWriteLockInterruptibly_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                (PublicDistributedReentrantReadWriteLock)lockFactory1.getReentrantReadWriteLock("testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.writeLock().lockInterruptibly();
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * read-lockInterruptibly is interruptible
+     * Note: you may have to adjust the property hazelcast.operation.call.timeout.millis to <2000 ms. Default is 120s!
+     */
+    @Test
+    public void testReadLockInterruptibly_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                (PublicDistributedReentrantReadWriteLock)lockFactory1.getReentrantReadWriteLock("testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.readLock().lockInterruptibly();
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t, 10 * LONG_DELAY_MS);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try read-lock is interruptible
+     */
+    @Test
+    public void testTryReadLock_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                (PublicDistributedReentrantReadWriteLock)lockFactory1.getReentrantReadWriteLock("testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.readLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+//        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t, 2 * LONG_DELAY_MS);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try write-lock is interruptible
+     */
+    @Test
+    public void testTryWriteLock_Interruptible()
+    {
+        final PublicDistributedReentrantReadWriteLock lock =
+                (PublicDistributedReentrantReadWriteLock)lockFactory1.getReentrantReadWriteLock("testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+//        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t, 2 * LONG_DELAY_MS);
+        lock.writeLock().unlock();
     }
 
     /**
