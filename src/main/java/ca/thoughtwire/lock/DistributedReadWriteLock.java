@@ -5,11 +5,14 @@ import ca.thoughtwire.concurrent.DistributedDataStructureFactory;
 import ca.thoughtwire.concurrent.DistributedSemaphore;
 import net.jcip.annotations.ThreadSafe;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
+import static ca.thoughtwire.lock.DistributedLockUtils.ElapsedTimer;
 /**
  * <p>
  * Class to implement a distributed Reader-Writer Lock.
@@ -36,7 +39,7 @@ public class DistributedReadWriteLock implements ReadWriteLock {
      * @param lockName name of the lock
      * @throws NullPointerException if either argument is null
      */
-    protected DistributedReadWriteLock(DistributedDataStructureFactory grid, String lockName) {
+    protected DistributedReadWriteLock(final DistributedDataStructureFactory grid, final String lockName) {
 
         if (grid == null || lockName == null) throw new NullPointerException("All arguments required.");
 
@@ -52,6 +55,9 @@ public class DistributedReadWriteLock implements ReadWriteLock {
     @Override
     public Lock writeLock() { return writerLock; }
 
+    /**
+     * @return the number of local holds on the lock
+     */
     public int getHoldCount()
     {
         return lockImpl.holds.get().count;
@@ -62,9 +68,43 @@ public class DistributedReadWriteLock implements ReadWriteLock {
      */
     public String getLockName() { return lockName; }
 
-    class LockImpl {
+    /* convenience method used throughout */
+    private static long getCurrentThreadId() {
+        return Thread.currentThread().getId();
+    }
 
-        LockImpl(DistributedDataStructureFactory grid, String lockName)
+    /**
+     * Useful only for testing, debugging
+     * @return the local threads waiting for a lock
+     */
+    protected Collection<Thread> getQueuedThreads()
+    {
+        return LockImpl.queuedThreads;
+    }
+
+    /**
+     * Useful only for testing, debugging
+     * @return true if the given thread is waiting for a lock.
+     */
+    protected boolean hasQueuedThread(final Thread t)
+    {
+        return LockImpl.queuedThreads.contains(t);
+    }
+
+    /* convenience methods used by debugging functions */
+    private static boolean addToQueuedThreads() {
+        return LockImpl.queuedThreads.add(Thread.currentThread());
+    }
+
+    private static boolean removeFromQueuedThreads() {
+        boolean success = LockImpl.queuedThreads.remove(Thread.currentThread());
+        if (!success) throw new IllegalStateException("Unable to remove thread from queue.");
+        return success;
+    }
+
+    static class LockImpl {
+
+        LockImpl(final DistributedDataStructureFactory grid, final String lockName)
         {
             this.mutex = grid.getSemaphore(lockName + "_mutex", 1);
             this.readSemaphore = grid.getSemaphore(lockName + "_read", 1);
@@ -81,10 +121,29 @@ public class DistributedReadWriteLock implements ReadWriteLock {
          */
         void acquireExclusive() throws InterruptedException
         {
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+
             holds.get().tryIncrement();
-            long writecounter = writeCount.incrementAndGet();
-            if (writecounter == 1) { readSemaphore.acquire(); }
-            writeSemaphore.acquire();
+            final long writecounter = writeCount.incrementAndGet();
+            boolean readSemaphoreAcquired = false;
+            if (writecounter == 1) {
+                try {
+                    readSemaphore.acquire();
+                    readSemaphoreAcquired = true;
+                } catch (InterruptedException e) {
+                    writeCount.decrementAndGet();
+                    holds.get().tryDecrement();
+                    throw e;
+                }
+            }
+            try {
+            	writeSemaphore.acquire();
+            } catch (InterruptedException e) {
+                if (readSemaphoreAcquired) readSemaphore.release();
+                writeCount.decrementAndGet();
+                holds.get().tryDecrement();
+                throw e;
+            }
             exclusiveOwner = Thread.currentThread().getId();
         }
 
@@ -95,7 +154,7 @@ public class DistributedReadWriteLock implements ReadWriteLock {
         boolean tryAcquireExclusive()
         {
             holds.get().tryIncrement();
-            long writecounter = writeCount.incrementAndGet();
+            final long writecounter = writeCount.incrementAndGet();
             if (writecounter == 1) {
                 if (!readSemaphore.tryAcquire())
                 {
@@ -110,7 +169,7 @@ public class DistributedReadWriteLock implements ReadWriteLock {
                 readSemaphore.release();
                 return false;
             }
-            exclusiveOwner = Thread.currentThread().getId();
+            exclusiveOwner = getCurrentThreadId();
             return true;
         }
 
@@ -119,28 +178,46 @@ public class DistributedReadWriteLock implements ReadWriteLock {
          *
          * @param l timeout amount
          * @param timeUnit timeout units
-         * @return true if lock acquired; false o/w
+         * @return true if lock acquired; false o/w or if given timeout <= 0
          * @throws InterruptedException
          */
-        boolean tryAcquireExclusive(long l, TimeUnit timeUnit) throws InterruptedException {
+        boolean tryAcquireExclusive(final long l, final TimeUnit timeUnit) throws InterruptedException {
+
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+
             if (l <= 0) return false;
 
-            DistributedLockUtils.ElapsedTimer timer = new DistributedLockUtils.ElapsedTimer(timeUnit.toMillis(l));
+            final ElapsedTimer timer = new ElapsedTimer(timeUnit.toMillis(l));
             holds.get().tryIncrement();
-            long writecounter = writeCount.incrementAndGet();
+            final long writecounter = writeCount.incrementAndGet();
+            boolean readSemaphoreAcquired = false;
             if (writecounter == 1) {
-                if (!readSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
-                {
+                try {
+					if (!readSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
+					{
+						writeCount.decrementAndGet();
+						holds.get().tryDecrement();
+						return false;
+					}
+                    readSemaphoreAcquired = true;
+                } catch (InterruptedException e) {
                     writeCount.decrementAndGet();
                     holds.get().tryDecrement();
-                    return false;
+                    throw e;
                 }
             }
-            if (!writeSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS)) {
+            try {
+				if (!writeSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS)) {
+					writeCount.decrementAndGet();
+					holds.get().tryDecrement();
+					if (readSemaphoreAcquired) readSemaphore.release();
+					return false;
+				}
+            } catch (InterruptedException e) {
                 writeCount.decrementAndGet();
                 holds.get().tryDecrement();
-                readSemaphore.release();
-                return false;
+                if (readSemaphoreAcquired) readSemaphore.release();
+                throw e;
             }
             exclusiveOwner = Thread.currentThread().getId();
             return true;
@@ -153,14 +230,37 @@ public class DistributedReadWriteLock implements ReadWriteLock {
          */
         void acquireShared() throws InterruptedException
         {
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+
             holds.get().tryIncrement();
-            mutex.acquire();
-            readSemaphore.acquire();
-            long readcounter = readCount.incrementAndGet();
-            if (readcounter == 1) { writeSemaphore.acquire(); }
+            try {
+				mutex.acquire();
+            } catch (InterruptedException e) {
+                holds.get().tryDecrement();
+                throw e;
+            }
+            try {
+				readSemaphore.acquire();
+            } catch (InterruptedException e) {
+                holds.get().tryDecrement();
+                mutex.release();
+                throw e;
+            }
+            final long readcounter = readCount.incrementAndGet();
+            if (readcounter == 1) {
+                try {
+                    writeSemaphore.acquire();
+                } catch (InterruptedException e) {
+                    readCount.decrementAndGet();
+					readSemaphore.release();
+                    holds.get().tryDecrement();
+					mutex.release();
+                    throw e;
+                }
+            }
             readSemaphore.release();
             mutex.release();
-            sharedOwner = Thread.currentThread().getId();
+			sharedOwner = getCurrentThreadId();
         }
 
         /**
@@ -180,61 +280,86 @@ public class DistributedReadWriteLock implements ReadWriteLock {
                 mutex.release();
                 return false;
             }
-            long readcounter = readCount.incrementAndGet();
+            final long readcounter = readCount.incrementAndGet();
             if (readcounter == 1)
             {
                 if (!writeSemaphore.tryAcquire())
                 {
-                    holds.get().tryDecrement();
-                    mutex.release();
                     readCount.decrementAndGet();
                     readSemaphore.release();
+                    holds.get().tryDecrement();
+                    mutex.release();
                     return false;
                 }
             }
             readSemaphore.release();
             mutex.release();
-            sharedOwner = Thread.currentThread().getId();
+            sharedOwner = getCurrentThreadId();
             return true;
         }
 
         /**
          * Acquire a shared lock only if it can be done in the given time.
-         * @return true if the exclusive lock was acquired; false o/w
+         * @param l timeout amount
+         * @param timeUnit timeout units
+         * @return true if lock acquired; false o/w or if given timeout <= 0
          * @throws InterruptedException if the thread is interrupted
          */
-        boolean tryAcquireShared(long l, TimeUnit timeUnit) throws InterruptedException {
+        boolean tryAcquireShared(final long l, final TimeUnit timeUnit) throws InterruptedException {
+
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
 
             if (l <= 0) return false;
 
-            DistributedLockUtils.ElapsedTimer timer = new DistributedLockUtils.ElapsedTimer(timeUnit.toMillis(l));
+            final ElapsedTimer timer = new ElapsedTimer(timeUnit.toMillis(l));
             holds.get().tryIncrement();
-            if (!mutex.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
-            {
+            try {
+				if (!mutex.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
+				{
+					holds.get().tryDecrement();
+					return false;
+				}
+            } catch (InterruptedException e) {
                 holds.get().tryDecrement();
-                return false;
+                throw e;
             }
-            if (!readSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
-            {
+
+            try {
+				if (!readSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
+				{
+					holds.get().tryDecrement();
+					mutex.release();
+					return false;
+				}
+            } catch (InterruptedException e) {
                 holds.get().tryDecrement();
                 mutex.release();
-                return false;
+                throw e;
             }
-            long readcounter = readCount.incrementAndGet();
+
+            final long readcounter = readCount.incrementAndGet();
             if (readcounter == 1)
             {
-                if (!writeSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
-                {
+                try {
+					if (!writeSemaphore.tryAcquire(timer.remainingMillis(), TimeUnit.MILLISECONDS))
+					{
+						holds.get().tryDecrement();
+						mutex.release();
+						readCount.decrementAndGet();
+						readSemaphore.release();
+						return false;
+                    }
+                } catch (InterruptedException e) {
                     holds.get().tryDecrement();
                     mutex.release();
                     readCount.decrementAndGet();
                     readSemaphore.release();
-                    return false;
+                    throw e;
                 }
             }
             readSemaphore.release();
             mutex.release();
-            sharedOwner = Thread.currentThread().getId();
+            sharedOwner = getCurrentThreadId();
             return true;
         }
 
@@ -246,7 +371,7 @@ public class DistributedReadWriteLock implements ReadWriteLock {
         void releaseShared()
         {
             holds.get().tryDecrement();
-            long readcounter = readCount.decrementAndGet();
+            final long readcounter = readCount.decrementAndGet();
             if (readcounter == 0) { writeSemaphore.release(); }
             sharedOwner = NONE;
          }
@@ -258,7 +383,7 @@ public class DistributedReadWriteLock implements ReadWriteLock {
         {
             holds.get().tryDecrement();
             writeSemaphore.release();
-            long writecounter = writeCount.decrementAndGet();
+            final long writecounter = writeCount.decrementAndGet();
             if (writecounter == 0) { readSemaphore.release(); }
             exclusiveOwner = NONE;
         }
@@ -281,6 +406,8 @@ public class DistributedReadWriteLock implements ReadWriteLock {
         static final long NONE = 0;
         long exclusiveOwner = NONE;
         long sharedOwner = NONE;
+        /* local threads waiting on a lock; useful for debugging */
+        final static Collection<Thread> queuedThreads = new ArrayList<Thread>();
     }
 
     /**
@@ -290,18 +417,20 @@ public class DistributedReadWriteLock implements ReadWriteLock {
      * {@link java.util.concurrent.locks.Lock#tryLock(long, java.util.concurrent.TimeUnit)} and
      * {@link java.util.concurrent.locks.Lock#newCondition()} are not supported.
      */
-    public class ReadLock implements Lock
+    public static class ReadLock implements Lock
     {
-        public ReadLock(DistributedReadWriteLock readWriteLock)
+        public ReadLock(final DistributedReadWriteLock readWriteLock)
         {
             this.lockImpl = readWriteLock.lockImpl;
         }
 
         @Override
         public void lock() {
+            addToQueuedThreads();
             try {
                 lockImpl.acquireShared();
             } catch (InterruptedException e) {
+                removeFromQueuedThreads();
                 // restore interrupt rather than swallowing or rethrowing InterruptedException
                 Thread.currentThread().interrupt();
             }
@@ -310,7 +439,12 @@ public class DistributedReadWriteLock implements ReadWriteLock {
         @Override
         public void lockInterruptibly() throws InterruptedException
         {
-            lockImpl.acquireShared();
+            addToQueuedThreads();
+            try {
+                lockImpl.acquireShared();
+            } finally {
+                removeFromQueuedThreads();
+            }
         }
 
         @Override
@@ -320,12 +454,23 @@ public class DistributedReadWriteLock implements ReadWriteLock {
 
         @Override
         public boolean tryLock() {
-            return lockImpl.tryAcquireShared();
+            addToQueuedThreads();
+            try {
+                return lockImpl.tryAcquireShared();
+            } finally {
+                removeFromQueuedThreads();
+            }
+
         }
 
         @Override
-        public boolean tryLock(long l, TimeUnit timeUnit) throws InterruptedException {
-            return lockImpl.tryAcquireShared(l, timeUnit);
+        public boolean tryLock(final long l, final TimeUnit timeUnit) throws InterruptedException {
+            addToQueuedThreads();
+            try {
+                return lockImpl.tryAcquireShared(l, timeUnit);
+            } finally {
+                removeFromQueuedThreads();
+            }
         }
 
         @Override
@@ -343,26 +488,34 @@ public class DistributedReadWriteLock implements ReadWriteLock {
      * {@link java.util.concurrent.locks.Lock#tryLock(long, java.util.concurrent.TimeUnit)} and
      * {@link java.util.concurrent.locks.Lock#newCondition()} are not supported.
      */
-    public class WriteLock implements Lock
+    public static class WriteLock implements Lock
     {
-        public WriteLock(DistributedReadWriteLock readWriteLock)
+        public WriteLock(final DistributedReadWriteLock readWriteLock)
         {
             this.lockImpl = readWriteLock.lockImpl;
         }
 
         @Override
         public void lock() {
+            addToQueuedThreads();
             try {
                 lockImpl.acquireExclusive();
             } catch (InterruptedException e) {
                 // restore interrupt rather than swallowing or rethrowing InterruptedException
                 Thread.currentThread().interrupt();
+            } finally {
+                removeFromQueuedThreads();
             }
         }
 
         @Override
         public void lockInterruptibly() throws InterruptedException {
-            lockImpl.acquireExclusive();
+            addToQueuedThreads();
+            try {
+                lockImpl.acquireExclusive();
+            } finally {
+                removeFromQueuedThreads();
+            }
         }
 
         @Override
@@ -373,12 +526,22 @@ public class DistributedReadWriteLock implements ReadWriteLock {
 
         @Override
         public boolean tryLock() {
-            return lockImpl.tryAcquireExclusive();
+            addToQueuedThreads();
+            try {
+                return lockImpl.tryAcquireExclusive();
+            } finally {
+                removeFromQueuedThreads();
+            }
         }
 
         @Override
-        public boolean tryLock(long l, TimeUnit timeUnit) throws InterruptedException {
-            return lockImpl.tryAcquireExclusive(l, timeUnit);
+        public boolean tryLock(final long l, final TimeUnit timeUnit) throws InterruptedException {
+            addToQueuedThreads();
+            try {
+                return lockImpl.tryAcquireExclusive(l, timeUnit);
+            } finally {
+                removeFromQueuedThreads();
+            }
         }
 
         @Override
@@ -395,7 +558,6 @@ public class DistributedReadWriteLock implements ReadWriteLock {
     static final class HoldCounter
     {
         int count;
-        final long tid = Thread.currentThread().getId();
 
         /*
          * Convenience method to detect illegal attempts to release locks that are not held

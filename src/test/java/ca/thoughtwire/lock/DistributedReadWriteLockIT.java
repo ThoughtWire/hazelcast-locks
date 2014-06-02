@@ -1,5 +1,6 @@
 package ca.thoughtwire.lock;
 
+import ca.thoughtwire.concurrent.HazelcastDataStructureFactory;
 import com.hazelcast.config.ClasspathXmlConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
@@ -31,8 +32,8 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
         grid1 = Hazelcast.newHazelcastInstance(standardConfig1);
         grid2 = Hazelcast.newHazelcastInstance(standardConfig2);
 
-        dataStructureFactory1 = new TestHazelcastDataStructureFactory(grid1);
-        dataStructureFactory2 = new TestHazelcastDataStructureFactory(grid2);
+        dataStructureFactory1 = new HazelcastDataStructureFactory(grid1);
+        dataStructureFactory2 = new HazelcastDataStructureFactory(grid2);
 
         lockFactory1 = new PublicDistributedLockFactory(dataStructureFactory1);
         lockFactory2 = new PublicDistributedLockFactory(dataStructureFactory2);
@@ -85,7 +86,6 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
         waitForQueuedThread(lock, t);
         t.interrupt();
         awaitTermination(t);
-//        releaseWriteLock(lock);
         lock.writeLock().unlock();
     }
 
@@ -107,8 +107,49 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
 
         waitForQueuedThread(lock, t);
         t.interrupt();
-        awaitTermination(t);
-//        releaseWriteLock(lock);
+        awaitTermination(t, 10 * LONG_DELAY_MS);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try read-lock is interruptible
+     */
+    @Test
+    public void testTryReadLock_Interruptible()
+    {
+        final PublicDistributedReadWriteLock lock =
+                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.readLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+//        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t, 2 * LONG_DELAY_MS);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try write-lock is interruptible
+     */
+    @Test
+    public void testTryWriteLock_Interruptible()
+    {
+        final PublicDistributedReadWriteLock lock =
+                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+//        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t, 2 * LONG_DELAY_MS);
         lock.writeLock().unlock();
     }
 
@@ -125,44 +166,6 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
                 assertFalse(lock.readLock().tryLock());
             }});
 
-        awaitTermination(t);
-        lock.writeLock().unlock();
-    }
-
-    /**
-     * timed write-tryLock is interruptible
-     */
-    @Test
-    public void testWriteTryLock_Interruptible() {
-        final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
-        lock.writeLock().lock();
-        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
-            public void realRun() throws InterruptedException {
-                lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
-            }});
-
-        waitForQueuedThread(lock, t);
-        t.interrupt();
-        awaitTermination(t);
-        lock.writeLock().unlock();
-    }
-
-    /**
-     * timed read-tryLock is interruptible
-     */
-    @Test
-    public void testReadTryLock_Interruptible() {
-        final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
-        lock.writeLock().lock();
-        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
-            public void realRun() throws InterruptedException {
-                lock.readLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
-            }});
-
-        waitForQueuedThread(lock, t);
-        t.interrupt();
         awaitTermination(t);
         lock.writeLock().unlock();
     }
@@ -434,7 +437,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     }
 
     private static HazelcastInstance grid1, grid2;
-    private static TestHazelcastDataStructureFactory dataStructureFactory1, dataStructureFactory2;
+    private static HazelcastDataStructureFactory dataStructureFactory1, dataStructureFactory2;
     private static PublicDistributedLockFactory lockFactory1, lockFactory2;
 
 }

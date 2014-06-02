@@ -1,5 +1,6 @@
 package ca.thoughtwire.lock;
 
+import ca.thoughtwire.concurrent.HazelcastDataStructureFactory;
 import com.hazelcast.config.ClasspathXmlConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
@@ -32,8 +33,8 @@ public class DistributedReentrantReadWriteLockIT extends DistributedLockUtils {
         grid1 = Hazelcast.newHazelcastInstance(standardConfig1);
         grid2 = Hazelcast.newHazelcastInstance(standardConfig2);
 
-        dataStructureFactory1 = new TestHazelcastDataStructureFactory(grid1);
-        dataStructureFactory2 = new TestHazelcastDataStructureFactory(grid2);
+        dataStructureFactory1 = new HazelcastDataStructureFactory(grid1);
+        dataStructureFactory2 = new HazelcastDataStructureFactory(grid2);
 
         lockFactory1 = new PublicDistributedLockFactory(dataStructureFactory1);
         lockFactory2 = new PublicDistributedLockFactory(dataStructureFactory2);
@@ -533,7 +534,7 @@ public class DistributedReentrantReadWriteLockIT extends DistributedLockUtils {
     }
 
     private static HazelcastInstance grid1, grid2;
-    private static TestHazelcastDataStructureFactory dataStructureFactory1, dataStructureFactory2;
+    private static HazelcastDataStructureFactory dataStructureFactory1, dataStructureFactory2;
     private static PublicDistributedLockFactory lockFactory1, lockFactory2;
 
 }

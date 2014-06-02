@@ -67,7 +67,6 @@ public class DistributedReadWriteLockTest extends DistributedLockUtils {
         waitForQueuedThread(lock, t);
         t.interrupt();
         awaitTermination(t);
-//        releaseWriteLock(lock);
         lock.writeLock().unlock();
     }
 
@@ -89,7 +88,48 @@ public class DistributedReadWriteLockTest extends DistributedLockUtils {
         waitForQueuedThread(lock, t);
         t.interrupt();
         awaitTermination(t);
-//        releaseWriteLock(lock);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try read-lock is interruptible
+     */
+    @Test
+    public void testTryReadLock_Interruptible()
+    {
+        final PublicDistributedReadWriteLock lock =
+                new PublicDistributedReadWriteLock(grid, "testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.readLock().tryLock(4 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t);
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * timed try write-lock is interruptible
+     */
+    @Test
+    public void testTryWriteLock_Interruptible()
+    {
+        final PublicDistributedReadWriteLock lock =
+                new PublicDistributedReadWriteLock(grid, "testLock");
+
+        lock.writeLock().lock();
+        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+            public void realRun() throws InterruptedException {
+                lock.writeLock().tryLock(4 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
+            }});
+
+        waitForQueuedThread(lock, t);
+        t.interrupt();
+        awaitTermination(t);
         lock.writeLock().unlock();
     }
 
@@ -395,6 +435,7 @@ public class DistributedReadWriteLockTest extends DistributedLockUtils {
         awaitTermination(t);
         lock.writeLock().unlock();
     }
+
     /**
      * timed read-tryLock is interruptible
      */

@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -70,16 +71,7 @@ public class DistributedLockUtils {
 
         public boolean hasQueuedThread(Thread t)
         {
-            if (lockImpl.readSemaphore instanceof QueuesThreads)
-            {
-                return ((QueuesThreads)lockImpl.readSemaphore).getQueuedThreads().contains(t) ||
-                        ((QueuesThreads)lockImpl.writeSemaphore).getQueuedThreads().contains(t) ||
-                        ((QueuesThreads)lockImpl.mutex).getQueuedThreads().contains(t);
-            }
-            else
-            {
-                throw new IllegalArgumentException("Operation not supported on this Semaphore implementation");
-            }
+            return super.hasQueuedThread(t);
         }
 
         public long getOwner() {
@@ -145,7 +137,7 @@ public class DistributedLockUtils {
 
     public static class PublicDistributedLockFactory extends DistributedLockFactory
     {
-        public PublicDistributedLockFactory(TestHazelcastDataStructureFactory dataStructureFactory)
+        public PublicDistributedLockFactory(HazelcastDataStructureFactory dataStructureFactory)
         {
             super(dataStructureFactory);
         }
@@ -254,17 +246,7 @@ public class DistributedLockUtils {
         }
     }
 
-    public interface QueuesThreads
-    {
-        public Collection<Thread> getQueuedThreads();
-    }
-
-    public interface HasWaitingThreads
-    {
-        public Collection<Thread> getWaiters(Condition condition);
-    }
-
-    public static class LocalSemaphore implements DistributedSemaphore, QueuesThreads
+    public static class LocalSemaphore implements DistributedSemaphore
     {
         public LocalSemaphore(String name, int permits)
         {
@@ -300,32 +282,16 @@ public class DistributedLockUtils {
             return delegate.tryAcquire(l, timeUnit);
         }
 
-        public Collection<Thread> getQueuedThreads()
-        {
-            return delegate.getQueuedThreads();
-        }
-
         private final String name;
         private final PublicSemaphore delegate;
     }
 
-    public static class LocalLock extends ReentrantLock implements QueuesThreads, HasWaitingThreads
+    public static class LocalLock extends ReentrantLock
     {
         public LocalLock(String lockName)
         {
             super();
             this.name = lockName;
-        }
-
-        public Collection<Thread> getWaiters(Condition condition)
-        {
-            if (isHeldByCurrentThread()) {
-                return super.getWaitingThreads(condition);
-            }
-            else
-            {
-                return Collections.emptyList();
-            }
         }
 
         @Override
@@ -341,27 +307,6 @@ public class DistributedLockUtils {
 
         private final String name;
 
-    }
-    public static class PublicHazelcastSemaphore extends HazelcastSemaphore implements QueuesThreads
-    {
-        public PublicHazelcastSemaphore(ISemaphore delegate)
-        {
-            super(delegate);
-        }
-
-        @Override
-        public void acquire() throws InterruptedException {
-            queuedThreads.add(Thread.currentThread());
-            super.acquire();
-            queuedThreads.remove(Thread.currentThread());
-        }
-
-        public Collection<Thread> getQueuedThreads()
-        {
-            return queuedThreads;
-        }
-
-        Queue<Thread> queuedThreads = new ConcurrentLinkedQueue<Thread>();
     }
 
     public static class LocalDistributedDataStructureFactory implements DistributedDataStructureFactory
@@ -385,22 +330,7 @@ public class DistributedLockUtils {
 
         @Override
         public Condition getCondition(Lock lock, String conditionName) {
-            return ((LocalLock)lock).newCondition();
-        }
-    }
-
-    public static class TestHazelcastDataStructureFactory extends HazelcastDataStructureFactory
-    {
-        TestHazelcastDataStructureFactory(HazelcastInstance hazelcastInstance)
-        {
-            super(hazelcastInstance);
-        }
-
-        @Override
-        public DistributedSemaphore getSemaphore(String name, int initPermits) {
-            ISemaphore semaphore = hazelcastInstance.getSemaphore(name);
-            semaphore.init(initPermits);
-            return new PublicHazelcastSemaphore(semaphore);
+            return lock.newCondition();
         }
     }
 
@@ -419,7 +349,7 @@ public class DistributedLockUtils {
     void waitForQueuedThread(PublicDistributedReadWriteLock lock, Thread t) {
         long startTime = System.nanoTime();
         while (!lock.hasQueuedThread(t)) {
-            if (millisElapsedSince(startTime) > LONG_DELAY_MS)
+            if (millisElapsedSince(startTime) > 4 * LONG_DELAY_MS)
                 throw new AssertionFailedError("timed out");
             Thread.yield();
         }
@@ -510,7 +440,6 @@ public class DistributedLockUtils {
     {
         public ElapsedTimer(long durationMillis)
         {
-            this.durationMillis = durationMillis;
             this.completedMillis = System.currentTimeMillis() + durationMillis;
         }
 
@@ -519,7 +448,6 @@ public class DistributedLockUtils {
             return completedMillis - System.currentTimeMillis();
         }
 
-        private final long durationMillis;
         private final long completedMillis;
     }
 
