@@ -1,6 +1,8 @@
 package ca.thoughtwire.lock;
 
 import ca.thoughtwire.concurrent.DistributedDataStructureFactory;
+import ca.thoughtwire.concurrent.HazelcastDataStructureFactory;
+import com.hazelcast.core.HazelcastInstance;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +14,22 @@ import java.util.concurrent.locks.ReadWriteLock;
  * @author vanessa.williams
  */
 public class DistributedLockFactory {
+
+    /**
+     * Convenience static factory method for creating a lock factory using Hazelcast.
+     * A shortcut for new DistributedLockFactory(new HazelcastDataStructureFactory(hazelcastInstance))).
+     *
+     * @param hazelcastInstance
+     * @return A DistributedLockFactory based on a HazelcastDataStructureFactory.
+     */
+    public static DistributedLockFactory newHazelcastLockFactory(HazelcastInstance hazelcastInstance)
+    {
+        if (hazelcastInstance == null)
+        {
+            throw new IllegalArgumentException("HazelcastInstance argument is required.");
+        }
+        return new DistributedLockFactory(new HazelcastDataStructureFactory(hazelcastInstance));
+    }
 
     /**
      * Constructor.

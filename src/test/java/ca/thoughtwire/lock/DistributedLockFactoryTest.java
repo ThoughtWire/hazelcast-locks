@@ -1,11 +1,14 @@
 package ca.thoughtwire.lock;
 
+import com.hazelcast.core.HazelcastInstance;
+import org.easymock.EasyMockSupport;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
 import static ca.thoughtwire.lock.DistributedLockUtils.LocalDistributedDataStructureFactory;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -19,6 +22,15 @@ public class DistributedLockFactoryTest {
     {
         this.lockFactory =
                 new DistributedLockFactory(new LocalDistributedDataStructureFactory());
+    }
+
+    @Test
+    public void factoryMethodSucceeds()
+    {
+        EasyMockSupport mockManager = new EasyMockSupport();
+        HazelcastInstance hazelcastInstance = mockManager.createNiceMock(HazelcastInstance.class);
+        DistributedLockFactory lockFactory = DistributedLockFactory.newHazelcastLockFactory(hazelcastInstance);
+        assertFalse(lockFactory == null);
     }
 
     /**
