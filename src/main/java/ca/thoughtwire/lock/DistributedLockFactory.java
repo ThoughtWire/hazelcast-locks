@@ -19,7 +19,7 @@ public class DistributedLockFactory {
      * Convenience static factory method for creating a lock factory using Hazelcast.
      * A shortcut for new DistributedLockFactory(new HazelcastDataStructureFactory(hazelcastInstance))).
      *
-     * @param hazelcastInstance
+     * @param hazelcastInstance  the grid instance
      * @return A DistributedLockFactory based on a HazelcastDataStructureFactory.
      */
     public static DistributedLockFactory newHazelcastLockFactory(HazelcastInstance hazelcastInstance)
@@ -62,6 +62,10 @@ public class DistributedLockFactory {
         }
     }
 
+    /**
+     * @param lockName name of the lock
+     * @return a re-entrant distributed readers-writers lock
+     */
     public ReadWriteLock getReentrantReadWriteLock(String lockName)
     {
         if (threadReentrantLocks.get().containsKey(lockName))
@@ -75,6 +79,12 @@ public class DistributedLockFactory {
         }
 
     }
+
+    public static void shutdown()
+   	{
+   		threadLocks.remove();
+   		threadReentrantLocks.remove();
+   	}
 
     static final ThreadLocal<Map<String, DistributedReadWriteLock>> threadLocks = new ThreadLocal<Map<String, DistributedReadWriteLock>>() {
         @Override

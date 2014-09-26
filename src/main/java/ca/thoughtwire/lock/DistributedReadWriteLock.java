@@ -371,10 +371,10 @@ public class DistributedReadWriteLock implements ReadWriteLock {
         void releaseShared()
         {
             holds.get().tryDecrement();
-            final long readcounter = readCount.decrementAndGet();
-            if (readcounter == 0) { writeSemaphore.release(); }
+            if (readCount.decrementAndGet() == 0) { writeSemaphore.release(); }
             sharedOwner = NONE;
-         }
+            holds.remove();
+        }
 
         /**
          * Release a write lock.
@@ -383,9 +383,9 @@ public class DistributedReadWriteLock implements ReadWriteLock {
         {
             holds.get().tryDecrement();
             writeSemaphore.release();
-            final long writecounter = writeCount.decrementAndGet();
-            if (writecounter == 0) { readSemaphore.release(); }
+            if (writeCount.decrementAndGet() == 0) { readSemaphore.release(); }
             exclusiveOwner = NONE;
+            holds.remove();
         }
 
         /**

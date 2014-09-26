@@ -312,8 +312,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         {
             monitor.lock();
             try {
-                holds.get().tryDecrement();
-                if (holds.get().count == 0)
+                if (holds.get().tryDecrement() == 0)
                 {
                     numberOfThreads--;
                     writeLockedBy.set(NONE);
@@ -473,7 +472,10 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         public void unlock()
         {
             lockImpl.release();
-            writeHolds.get().count--;
+            if (writeHolds.get().count-- == 0)
+            {
+                writeHolds.remove();
+            }
         }
 
         @Override
