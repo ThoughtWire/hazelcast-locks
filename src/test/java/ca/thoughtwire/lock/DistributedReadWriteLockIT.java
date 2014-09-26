@@ -35,8 +35,8 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
         dataStructureFactory1 = new HazelcastDataStructureFactory(grid1);
         dataStructureFactory2 = new HazelcastDataStructureFactory(grid2);
 
-        lockFactory1 = new PublicDistributedLockFactory(dataStructureFactory1);
-        lockFactory2 = new PublicDistributedLockFactory(dataStructureFactory2);
+        lockService1 = new PublicDistributedLockService(dataStructureFactory1);
+        lockService2 = new PublicDistributedLockService(dataStructureFactory2);
     }
 
     /**
@@ -46,7 +46,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void lockingUnlockedSucceeds()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         assertNotWriteLocked(lock);
         assertNotReadLocked(lock);
 
@@ -75,7 +75,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testWriteLockInterruptibly_Interruptible()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -97,7 +97,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testReadLockInterruptibly_Interruptible()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -118,7 +118,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testTryReadLock_Interruptible()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -139,7 +139,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testTryWriteLock_Interruptible()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -159,7 +159,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     @Test
     public void testReadTryLockWhenLocked() {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() {
@@ -177,7 +177,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testWriteLock_MSIE()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         assertNotWriteLocked(lock);
         assertNotReadLocked(lock);
 
@@ -191,7 +191,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testReadLock_MSIE()
     {
         PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         assertNotWriteLocked(lock);
         assertNotReadLocked(lock);
 
@@ -205,7 +205,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testTwoNestedReads_ITSE()
     {
         PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         assertNotWriteLocked(lock);
         assertNotReadLocked(lock);
 
@@ -225,7 +225,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testTwoNestedWrites_ITSE()
     {
         PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         assertNotWriteLocked(lock);
         assertNotReadLocked(lock);
 
@@ -245,7 +245,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void upgradeFails_ITSE()
     {
         PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         assertNotWriteLocked(lock);
         assertNotReadLocked(lock);
 
@@ -265,7 +265,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void downgradeFails_ITSE()
     {
         PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
         assertNotWriteLocked(lock);
         assertNotReadLocked(lock);
 
@@ -285,7 +285,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testMultipleReaders()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
 
         lock.readLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
@@ -305,7 +305,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testWriteAfterReadLock()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
 
         lock.readLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
@@ -332,7 +332,7 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void testReadAfterWriteLock()
     {
         final PublicDistributedReadWriteLock lock =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock");
 
         lock.writeLock().lock();
         Thread t1 = newStartedThread(new CheckedRunnable() {
@@ -361,9 +361,9 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void multipleNamedReadLocks()
     {
         final PublicDistributedReadWriteLock lock1 =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock1");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock1");
         final PublicDistributedReadWriteLock lock2 =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock2");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock2");
 
         lock1.readLock().lock();
         assertReadLocked(lock1);
@@ -388,9 +388,9 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
     public void multipleNamedWriteLocks()
     {
         final PublicDistributedReadWriteLock lock1 =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock1");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock1");
         final PublicDistributedReadWriteLock lock2 =
-                (PublicDistributedReadWriteLock)lockFactory1.getReadWriteLock("testLock2");
+                (PublicDistributedReadWriteLock)lockService1.getReadWriteLock("testLock2");
 
         lock1.writeLock().lock();
         assertWriteLocked(lock1);
@@ -438,6 +438,6 @@ public class DistributedReadWriteLockIT extends DistributedLockUtils {
 
     private static HazelcastInstance grid1, grid2;
     private static HazelcastDataStructureFactory dataStructureFactory1, dataStructureFactory2;
-    private static PublicDistributedLockFactory lockFactory1, lockFactory2;
+    private static PublicDistributedLockService lockService1, lockService2;
 
 }

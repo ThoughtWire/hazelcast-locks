@@ -14,7 +14,7 @@ public class DistributedReadWriteLockTest extends DistributedLockUtils {
     public void setUp()
     {
         grid = new DistributedLockUtils.LocalDistributedDataStructureFactory();
-        lockFactory = new DistributedLockFactory(grid);
+        lockService = new DistributedLockService(grid);
     }
 
     /**
@@ -499,5 +499,5 @@ public class DistributedReadWriteLockTest extends DistributedLockUtils {
 
 
     DistributedDataStructureFactory grid;
-    DistributedLockFactory lockFactory;
+    DistributedLockService lockService;
 }

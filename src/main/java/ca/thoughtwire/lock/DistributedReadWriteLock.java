@@ -32,7 +32,7 @@ public class DistributedReadWriteLock implements ReadWriteLock {
      * Constructor for a distributed multiple-reader, single-writer
      * lock which guarantees that writers do not starve.
      *
-     * Not intended to be used directly. Use {@link DistributedLockFactory#getReadWriteLock(String)}
+     * Not intended to be used directly. Use {@link DistributedLockService#getReadWriteLock(String)}
      * instead, to take care of providing a concrete implementation of DistributedDataStructureFactory.
      *
      * @param grid factory for distributed semaphores and atomic longs
