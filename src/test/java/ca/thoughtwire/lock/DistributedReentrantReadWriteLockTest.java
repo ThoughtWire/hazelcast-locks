@@ -17,7 +17,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void setUp()
     {
         grid = new LocalDistributedDataStructureFactory();
-        lockFactory = new DistributedLockFactory(grid);
+        lockService = new DistributedLockService(grid);
     }
 
     /**
@@ -605,6 +605,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     }
 
     DistributedDataStructureFactory grid;
-    DistributedLockFactory lockFactory;
+    DistributedLockService lockService;
 
 }

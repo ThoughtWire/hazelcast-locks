@@ -15,13 +15,13 @@ import static org.junit.Assert.fail;
 /**
  * @author vanessa.williams
  */
-public class DistributedLockFactoryTest {
+public class DistributedLockServiceTest {
 
     @Before
     public void setUp()
     {
-        this.lockFactory =
-                new DistributedLockFactory(new LocalDistributedDataStructureFactory());
+        this.lockService =
+                new DistributedLockService(new LocalDistributedDataStructureFactory());
     }
 
     @Test
@@ -29,8 +29,8 @@ public class DistributedLockFactoryTest {
     {
         EasyMockSupport mockManager = new EasyMockSupport();
         HazelcastInstance hazelcastInstance = mockManager.createNiceMock(HazelcastInstance.class);
-        DistributedLockFactory lockFactory = DistributedLockFactory.newHazelcastLockFactory(hazelcastInstance);
-        assertFalse(lockFactory == null);
+        DistributedLockService lockService = DistributedLockService.newHazelcastLockService(hazelcastInstance);
+        assertFalse(lockService == null);
     }
 
     /**
@@ -39,8 +39,8 @@ public class DistributedLockFactoryTest {
     @Test
     public void oneLockObjectPerNamePerThread()
     {
-        ReadWriteLock lock1 = lockFactory.getReadWriteLock("testLock");
-        ReadWriteLock lock2 = lockFactory.getReadWriteLock("testLock");
+        ReadWriteLock lock1 = lockService.getReadWriteLock("testLock");
+        ReadWriteLock lock2 = lockService.getReadWriteLock("testLock");
         assertTrue(lock1 == lock2);
 
         lock1.readLock().lock();
@@ -59,11 +59,11 @@ public class DistributedLockFactoryTest {
     @Test
     public void testMultipleFactories()
     {
-        DistributedLockFactory lockFactory2 =
-                new DistributedLockFactory(new LocalDistributedDataStructureFactory());
+        DistributedLockService lockService2 =
+                new DistributedLockService(new LocalDistributedDataStructureFactory());
 
-        ReadWriteLock lock1 = lockFactory.getReadWriteLock("testLock");
-        ReadWriteLock lock2 = lockFactory2.getReadWriteLock("testLock");
+        ReadWriteLock lock1 = lockService.getReadWriteLock("testLock");
+        ReadWriteLock lock2 = lockService2.getReadWriteLock("testLock");
         assertTrue(lock1 == lock2);
         lock1.readLock().lock();
         try {
@@ -75,5 +75,5 @@ public class DistributedLockFactoryTest {
         }
     }
 
-    DistributedLockFactory lockFactory;
+    DistributedLockService lockService;
 }

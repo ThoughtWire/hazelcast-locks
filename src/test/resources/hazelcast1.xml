@@ -13,7 +13,7 @@
     <!--</properties>-->
 
     <network>
-        <port auto-increment="true">5800</port>
+        <port auto-increment="true" port-count="3">5800</port>
         <join>
             <multicast enabled="false"/>
             <tcp-ip enabled="true">

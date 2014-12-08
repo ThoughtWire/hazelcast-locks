@@ -13,22 +13,22 @@ import java.util.concurrent.locks.ReadWriteLock;
  *
  * @author vanessa.williams
  */
-public class DistributedLockFactory {
+public class DistributedLockService {
 
     /**
      * Convenience static factory method for creating a lock factory using Hazelcast.
-     * A shortcut for new DistributedLockFactory(new HazelcastDataStructureFactory(hazelcastInstance))).
+     * A shortcut for new DistributedLockService(new HazelcastDataStructureFactory(hazelcastInstance))).
      *
      * @param hazelcastInstance  the grid instance
-     * @return A DistributedLockFactory based on a HazelcastDataStructureFactory.
+     * @return A DistributedLockService based on a HazelcastDataStructureFactory.
      */
-    public static DistributedLockFactory newHazelcastLockFactory(HazelcastInstance hazelcastInstance)
+    public static DistributedLockService newHazelcastLockService(HazelcastInstance hazelcastInstance)
     {
         if (hazelcastInstance == null)
         {
             throw new IllegalArgumentException("HazelcastInstance argument is required.");
         }
-        return new DistributedLockFactory(new HazelcastDataStructureFactory(hazelcastInstance));
+        return new DistributedLockService(new HazelcastDataStructureFactory(hazelcastInstance));
     }
 
     /**
@@ -36,7 +36,7 @@ public class DistributedLockFactory {
      *
      * @param distributedDataStructureFactory factory for creating distributed semaphores and atomic primitives
      */
-    public DistributedLockFactory(DistributedDataStructureFactory distributedDataStructureFactory)
+    public DistributedLockService(DistributedDataStructureFactory distributedDataStructureFactory)
     {
         if (distributedDataStructureFactory == null)
         {

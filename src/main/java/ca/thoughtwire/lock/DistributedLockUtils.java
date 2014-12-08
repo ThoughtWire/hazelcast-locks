@@ -1,18 +1,14 @@
 package ca.thoughtwire.lock;
 
 import ca.thoughtwire.concurrent.*;
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ISemaphore;
 import junit.framework.AssertionFailedError;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -135,9 +131,9 @@ public class DistributedLockUtils {
         }
     }
 
-    public static class PublicDistributedLockFactory extends DistributedLockFactory
+    public static class PublicDistributedLockService extends DistributedLockService
     {
-        public PublicDistributedLockFactory(HazelcastDataStructureFactory dataStructureFactory)
+        public PublicDistributedLockService(HazelcastDataStructureFactory dataStructureFactory)
         {
             super(dataStructureFactory);
         }
