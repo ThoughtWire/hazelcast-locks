@@ -16,10 +16,10 @@ with the exception of creation of a new lock instance.
 
 ```java
 // This can be a singleton, but additional instances aren't a problem.
-DistributedLockFactory lockFactory =
-    DistributedLockFactory.newHazelcastLockFactory(hazelcastInstance);
+DistributedLockService lockService =
+    DistributedLockService.newHazelcastLockService(hazelcastInstance);
 
-ReadWriteLock lock = lockFactory.getReentrantReadWriteLock("myLock");
+ReadWriteLock lock = lockService.getReentrantReadWriteLock("myLock");
 lock.readLock().lock();
 try {
     // do some stuff
@@ -27,6 +27,11 @@ try {
 finally {
     lock.readLock.unlock();
 }
+
+// On application shutdown, this will clean up ThreadLocals. If you're not running in a container
+// like Tomcat and don't plan to restart the app without restarting the container, you can skip this.
+// Not doing this only causes memory leaks in very specific situations.
+DistributedLockService.shutdown();
 ```
 
 Note that not all methods are supported for all Lock types. For example, neither lock supports `newCondition()`, and
