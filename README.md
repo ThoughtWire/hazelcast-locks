@@ -28,8 +28,9 @@ finally {
     lock.readLock.unlock();
 }
 
-// On application shutdown, this will clean up ThreadLocals. If you're not running in a container
-// like Tomcat and don't plan to restart the app without restarting the container, you can skip this.
+// On application shutdown, this will clean up ThreadLocals. If you're not
+// running in a container like Tomcat and don't plan to restart the app
+// without restarting the container, you can skip this.
 // Not doing this only causes memory leaks in very specific situations.
 DistributedLockService.shutdown();
 ```
