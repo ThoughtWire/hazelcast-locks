@@ -1,7 +1,5 @@
 package ca.thoughtwire.lock;
 
-import com.hazelcast.core.HazelcastInstance;
-import org.easymock.EasyMockSupport;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,14 +18,6 @@ public class DistributedLockServiceTest {
     {
         this.lockService =
                 new DistributedLockService(new LocalDistributedDataStructureFactory());
-    }
-
-    @Test
-    public void factoryMethodSucceeds()
-    {
-        EasyMockSupport mockManager = new EasyMockSupport();
-        HazelcastInstance hazelcastInstance = mockManager.createNiceMock(HazelcastInstance.class);
-        DistributedLockService lockService = DistributedLockService.newHazelcastLockService(hazelcastInstance);
     }
 
     /**

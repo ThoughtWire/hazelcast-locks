@@ -12,9 +12,8 @@
 
     <properties>
         <com.hazelcast.version>3.2</com.hazelcast.version>
-        <maven-release-plugin.tagbase.groupidsuffix>core/grid</maven-release-plugin.tagbase.groupidsuffix>
-        <maven-compiler-plugin.source.version>1.6</maven-compiler-plugin.source.version>
-        <maven-compiler-plugin.target.version>1.6</maven-compiler-plugin.target.version>
+        <maven-compiler-plugin.source.version>1.7</maven-compiler-plugin.source.version>
+        <maven-compiler-plugin.target.version>1.7</maven-compiler-plugin.target.version>
     </properties>
 
     <licenses>
@@ -62,10 +61,10 @@
                 <version>2.9.1</version>
                 <executions>
                     <execution>
-                    <id>attach-javadocs</id>
-                    <goals>
+                      <id>attach-javadocs</id>
+                      <goals>
                         <goal>jar</goal>
-                    </goals>
+                      </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -93,12 +92,20 @@
         <version>4.11</version>
         <scope>compile</scope>  <!-- need this to compile DistributedLockUtils -->
       </dependency>
-      <dependency>
-        <groupId>org.easymock</groupId>
-        <artifactId>easymock</artifactId>
-        <version>3.2</version>
-      </dependency>
 
   </dependencies>
+
+  <distributionManagement>
+    <snapshotRepository>
+        <id>sonatype-nexus-snapshots</id>
+        <name>Sonatype Nexus snapshot repository</name>
+        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+        <id>sonatype-nexus-staging</id>
+        <name>Sonatype Nexus release repository</name>
+        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 
 </project>
