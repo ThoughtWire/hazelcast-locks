@@ -32,7 +32,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      * Constructor for a distributed multiple-reader, single-writer
      * lock which guarantees that writers do not starve.
      *
-     * Not intended to be used directly. Use {@link DistributedLockService#getReadWriteLock(String)}
+     * Not intended to be used directly. Use {@link DistributedLockService#getReentrantReadWriteLock(String)}
      * instead, to take care of providing a concrete implementation of DistributedDataStructureFactory.
      *
      * @param grid factory for distributed semaphores and atomic longs
@@ -68,7 +68,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      */
     public boolean isWriteLocked()
     {
-        return (lockImpl.isWriteLocked.get() != LockImpl.NONE);
+        return (lockImpl.isWriteLocked.get() == LockImpl.TRUE);
     }
 
     /**
@@ -82,7 +82,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      */
     protected int getHoldCount()
     {
-        return LockImpl.holds.get().count;
+        return lockImpl.holds.get().count;
     }
 
     /**
@@ -109,7 +109,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      */
     protected Collection<Thread> getQueuedThreads()
     {
-        return LockImpl.queuedThreads;
+        return lockImpl.queuedThreads;
     }
 
     /**
@@ -118,24 +118,24 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      */
     protected boolean hasQueuedThread(final Thread t)
     {
-        return LockImpl.queuedThreads.contains(t);
+        return lockImpl.queuedThreads.contains(t);
     }
 
     /* convenience method used throughout */
-    private static Thread getThread() {
+    private Thread getThread() {
         return Thread.currentThread();
     }
 
     /* convenience methods used by debugging functions */
-    private static boolean addToQueuedThreads() {
-        return LockImpl.queuedThreads.add(getThread());
+    private boolean addToQueuedThreads() {
+        return lockImpl.queuedThreads.add(getThread());
     }
 
-    private static boolean removeFromQueuedThreads() {
-        return LockImpl.queuedThreads.remove(getThread());
+    private boolean removeFromQueuedThreads() {
+        return lockImpl.queuedThreads.remove(getThread());
     }
 
-    static class LockImpl {
+    class LockImpl {
 
         LockImpl(final DistributedDataStructureFactory grid, final String lockName)
         {
@@ -155,33 +155,30 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
             if (getThread().isInterrupted()) throw new InterruptedException();
 
             monitor.lockInterruptibly();
-            try {
-                final long tid = getThread().getId();
-                if (writeLockedBy == tid)
-                {
-                    holds.get().count++;
-                }
-                else
-                {
-                    writersWaiting.incrementAndGet();
-                    while (numberOfThreads > 0)
-                    {
-                        try {
-							lockAvailable.await();
-                        } catch (InterruptedException e) {
-                            writersWaiting.decrementAndGet();
-                            throw e;
-                        }
-                    }
-                    writersWaiting.decrementAndGet();
-                    holds.get().count = 1;
-                    writeLockedBy = tid;
-                    isWriteLocked.set(TRUE);
-                    numberOfThreads++;
-                }
-            } finally {
-                monitor.unlock();
+            final long tid = getThread().getId();
+            if (writeLockedBy == tid)
+            {
+                holds.get().count++;
             }
+            else
+            {
+                writersWaiting.incrementAndGet();
+                while (numberOfThreads > 0)
+                {
+                    try {
+                        lockAvailable.await();
+                    } catch (InterruptedException e) {
+                        writersWaiting.decrementAndGet();
+                        throw e;
+                    }
+                }
+                writersWaiting.decrementAndGet();
+                holds.get().count = 1;
+                writeLockedBy = tid;
+                isWriteLocked.set(TRUE);
+                numberOfThreads++;
+            }
+            monitor.unlock();
 
         }
 
@@ -201,36 +198,31 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
 
             final ElapsedTimer timer = new ElapsedTimer(timeUnit.toMillis(l));
             if (!monitor.tryLock(timer.remainingMillis(), TimeUnit.MILLISECONDS)) return false;
-            try {
-                final long tid = getThread().getId();
-                if (writeLockedBy == tid)
-                {
-                    holds.get().count++;
-                }
-                else
-                {
-                    writersWaiting.incrementAndGet();
-                    while (numberOfThreads > 0)
-                    {
-                        try {
-							if (!lockAvailable.await(timer.remainingMillis(), TimeUnit.MILLISECONDS)) {
-								writersWaiting.decrementAndGet();
-								return false;
-							}
-                        } catch (InterruptedException e) {
+
+            final long tid = getThread().getId();
+            if (writeLockedBy == tid) {
+                holds.get().count++;
+            } else {
+                writersWaiting.incrementAndGet();
+                while (numberOfThreads > 0) {
+                    try {
+                        if (!lockAvailable.await(timer.remainingMillis(), TimeUnit.MILLISECONDS)) {
                             writersWaiting.decrementAndGet();
-                            throw e;
+                            monitor.unlock();
+                            return false;
                         }
+                    } catch (InterruptedException e) {
+                        writersWaiting.decrementAndGet();
+                        throw e;
                     }
-                    writersWaiting.decrementAndGet();
-                    holds.get().count = 1;
-                    writeLockedBy = tid;
-                    isWriteLocked.set(TRUE);
-                    numberOfThreads++;
                 }
-            } finally {
-                monitor.unlock();
+                writersWaiting.decrementAndGet();
+                holds.get().count = 1;
+                writeLockedBy = tid;
+                isWriteLocked.set(TRUE);
+                numberOfThreads++;
             }
+            monitor.unlock();
             return true;
         }
 
@@ -244,24 +236,22 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
             if (getThread().isInterrupted()) throw new InterruptedException();
 
             monitor.lockInterruptibly();
-            try {
-                if (holds.get().count > 0)
-                {
-                    holds.get().count++;
-                }
-                else
-                {
-                    // the checking of these variables is guarded by the monitor which all methods acquire
-                    while (!(writersWaiting.get() == 0 && isWriteLocked.get() == FALSE))
-                    {
-                        lockAvailable.await();
-                    }
-                    holds.get().count = 1;
-                    numberOfThreads++;
-                }
-            } finally {
-                monitor.unlock();
+            if (holds.get().count > 0)
+            {
+                holds.get().count++;
             }
+            else
+            {
+                // the checking of these variables is guarded by the monitor which all methods acquire
+                while (!(writersWaiting.get() == 0 && isWriteLocked.get() == FALSE))
+                {
+                    lockAvailable.await();
+                }
+                holds.get().count = 1;
+                numberOfThreads++;
+            }
+            monitor.unlock();
+
 
         }
 
@@ -281,27 +271,25 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
             final ElapsedTimer timer = new ElapsedTimer(timeUnit.toMillis(l));
 
             if (!monitor.tryLock(timer.remainingMillis(), TimeUnit.MILLISECONDS)) return false;
-            try {
-                if (holds.get().count > 0)
-                {
-                    holds.get().count++;
-                }
-                else
-                {
-                    // the checking of these variables is guarded by the monitor which all methods acquire
-                    while (!(writersWaiting.get() == 0 && isWriteLocked.get() == FALSE))
-                    {
-                        if (!lockAvailable.await(timer.remainingMillis(), TimeUnit.MILLISECONDS))
-                        {
-                            return false;
-                        }
-                    }
-                    holds.get().count = 1;
-                    numberOfThreads++;
-                }
-            } finally {
-                monitor.unlock();
+            if (holds.get().count > 0)
+            {
+                holds.get().count++;
             }
+            else
+            {
+                // the checking of these variables is guarded by the monitor which all methods acquire
+                while (!(writersWaiting.get() == 0 && isWriteLocked.get() == FALSE))
+                {
+                    if (!lockAvailable.await(timer.remainingMillis(), TimeUnit.MILLISECONDS))
+                    {
+                        monitor.unlock();
+                        return false;
+                    }
+                }
+                holds.get().count = 1;
+                numberOfThreads++;
+            }
+            monitor.unlock();
             return true;
         }
 
@@ -330,7 +318,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         /**
         * Per-thread lock counter to prevent unlocking by non-owners.
         */
-        static final ThreadLocal<HoldCounter> holds = new ThreadLocal<HoldCounter>() {
+        final ThreadLocal<HoldCounter> holds = new ThreadLocal<HoldCounter>() {
             @Override
             protected HoldCounter initialValue() { return new HoldCounter(); }
         };
@@ -342,10 +330,11 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         final Lock monitor;
         final Condition lockAvailable;
         final DistributedAtomicLong writersWaiting, isWriteLocked;
+
         /* local threads waiting on a lock; useful for debugging */
-        final static Collection<Thread> queuedThreads = new ArrayList<Thread>();
+        final Collection<Thread> queuedThreads = new ArrayList<Thread>();
         int numberOfThreads = 0;
-        static long writeLockedBy = NONE;
+        long writeLockedBy = NONE;
 
     }
 
@@ -356,7 +345,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      * {@link java.util.concurrent.locks.Lock#tryLock(long, java.util.concurrent.TimeUnit)} and
      * {@link java.util.concurrent.locks.Lock#newCondition()} are not supported.
      */
-    public static class ReadLock implements Lock
+    public class ReadLock implements Lock
     {
         public ReadLock(final DistributedReentrantReadWriteLock readWriteLock)
         {
@@ -434,7 +423,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         /**
         * Per-thread read lock counter
         */
-        static final ThreadLocal<HoldCounter> readHolds = new ThreadLocal<HoldCounter>() {
+        final ThreadLocal<HoldCounter> readHolds = new ThreadLocal<HoldCounter>() {
             @Override
             protected HoldCounter initialValue() { return new HoldCounter(); }
         };
@@ -447,7 +436,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      * {@link java.util.concurrent.locks.Lock#tryLock(long, java.util.concurrent.TimeUnit)} and
      * {@link java.util.concurrent.locks.Lock#newCondition()} are not supported.
      */
-    public static class WriteLock implements Lock
+    public class WriteLock implements Lock
     {
         public WriteLock(final DistributedReentrantReadWriteLock readWriteLock)
         {
@@ -483,7 +472,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         public void unlock()
         {
             lockImpl.release();
-            if (writeHolds.get().count-- == 0)
+            if (--writeHolds.get().count == 0)
             {
                 writeHolds.remove();
             }
@@ -533,7 +522,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         /**
         * Per-thread write lock counter
         */
-        static final ThreadLocal<HoldCounter> writeHolds = new ThreadLocal<HoldCounter>() {
+        final ThreadLocal<HoldCounter> writeHolds = new ThreadLocal<HoldCounter>() {
             @Override
             protected HoldCounter initialValue() { return new HoldCounter(); }
         };

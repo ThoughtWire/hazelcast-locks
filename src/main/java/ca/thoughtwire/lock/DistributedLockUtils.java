@@ -26,60 +26,10 @@ public class DistributedLockUtils {
     DistributedLockUtils() {}
 
     /**
-     * Subclass of {@link DistributedReadWriteLock} to expose some
+     * Subclass of {@link DistributedReentrantReadWriteLock} to expose some
      * internals for testing.
      */
-    public static class PublicDistributedReadWriteLock extends DistributedReadWriteLock
-    {
-        public PublicDistributedReadWriteLock(DistributedDataStructureFactory grid, String lockName) {
-            super(grid, lockName);
-        }
-
-        public long getReadCount() { return lockImpl.readCount.get(); }
-
-        public long getWriteCount() { return lockImpl.writeCount.get(); }
-
-        /**
-         * This is only useful for unit testing. It isn't possible to discover if
-         * some arbitrary node has the lock without acquiring it.
-         *
-         * @return true if a local thread has the write lock.
-         */
-        public boolean isWriteLocked()
-        {
-            return (lockImpl.writeSemaphore.availablePermits() == 0 &&
-                    lockImpl.readSemaphore.availablePermits() == 0 &&
-                    lockImpl.exclusiveOwner != LockImpl.NONE);
-        }
-
-        /**
-         * This is only useful for unit testing. It isn't possible to discover if
-         * some arbitrary node has the lock without acquiring it.
-         *
-         * @return true if a local thread has the read lock
-         */
-        public boolean isReadLocked()
-        {
-            return (lockImpl.writeSemaphore.availablePermits() == 0 &&
-                    lockImpl.readCount.get() > 0 &&
-                    lockImpl.sharedOwner != LockImpl.NONE);
-        }
-
-        public boolean hasQueuedThread(Thread t)
-        {
-            return super.hasQueuedThread(t);
-        }
-
-        public long getOwner() {
-            return lockImpl.sharedOwner != LockImpl.NONE ? lockImpl.sharedOwner : lockImpl.exclusiveOwner;
-        }
-    }
-
-    /**
-     * Subclass of {@link DistributedReadWriteLock} to expose some
-     * internals for testing.
-     */
-    public static class PublicDistributedReentrantReadWriteLock extends DistributedReentrantReadWriteLock
+    public class PublicDistributedReentrantReadWriteLock extends DistributedReentrantReadWriteLock
     {
         public PublicDistributedReentrantReadWriteLock(DistributedDataStructureFactory grid, String lockName) {
             super(grid, lockName);
@@ -131,7 +81,7 @@ public class DistributedLockUtils {
         }
     }
 
-    public static class PublicDistributedLockService extends DistributedLockService
+    public class PublicDistributedLockService extends DistributedLockService
     {
         public PublicDistributedLockService(HazelcastDataStructureFactory dataStructureFactory)
         {
@@ -139,47 +89,19 @@ public class DistributedLockUtils {
         }
 
         @Override
-        public DistributedReadWriteLock getReadWriteLock(String lockName)
-        {
-            if (threadLocks.get().containsKey(lockName))
-            {
-                return threadLocks.get().get(lockName);
-            }
-            else {
-                PublicDistributedReadWriteLock lock = new PublicDistributedReadWriteLock(distributedDataStructureFactory, lockName);
-                threadLocks.get().put(lockName, lock);
-                return lock;
-            }
-        }
-
-        @Override
         public DistributedReentrantReadWriteLock getReentrantReadWriteLock(String lockName) {
-            if (threadReentrantLocks.get().containsKey(lockName))
-            {
-                return threadReentrantLocks.get().get(lockName);
-            }
-            else {
-                PublicDistributedReentrantReadWriteLock lock = new PublicDistributedReentrantReadWriteLock(distributedDataStructureFactory, lockName);
-                threadReentrantLocks.get().put(lockName, lock);
+            if (THREAD_LOCKS.containsKey(lockName)) {
+                return THREAD_LOCKS.get(lockName);
+            } else {
+                PublicDistributedReentrantReadWriteLock lock =
+                        new PublicDistributedReentrantReadWriteLock(distributedDataStructureFactory, lockName);
+                THREAD_LOCKS.put(lockName, lock);
                 return lock;
             }
         }
 
-        static final ThreadLocal<Map<String, PublicDistributedReadWriteLock>> threadLocks = new ThreadLocal<Map<String, PublicDistributedReadWriteLock>>() {
-            @Override
-            protected Map<String, PublicDistributedReadWriteLock> initialValue() {
-                return new HashMap<String, PublicDistributedReadWriteLock>();
-            }
-        };
-
-        static final ThreadLocal<Map<String, DistributedReentrantReadWriteLock>> threadReentrantLocks =
-                new ThreadLocal<Map<String, DistributedReentrantReadWriteLock>>() {
-            @Override
-            protected Map<String, DistributedReentrantReadWriteLock> initialValue() {
-                return new HashMap<String, DistributedReentrantReadWriteLock>();
-            }
-        };
-
+        final Map<String, PublicDistributedReentrantReadWriteLock> THREAD_LOCKS =
+                new HashMap<String, PublicDistributedReentrantReadWriteLock>();
     }
 
     public static class LocalAtomicLong implements DistributedAtomicLong
@@ -337,20 +259,6 @@ public class DistributedLockUtils {
      */
     static long millisElapsedSince(long startNanoTime) {
         return NANOSECONDS.toMillis(System.nanoTime() - startNanoTime);
-    }
-
-    /**
-     * Spin-waits until lock.hasQueuedThread(t) becomes true.
-     */
-    void waitForQueuedThread(PublicDistributedReadWriteLock lock, Thread t) {
-        long startTime = System.nanoTime();
-        while (!lock.hasQueuedThread(t)) {
-            if (millisElapsedSince(startTime) > 4 * LONG_DELAY_MS)
-                throw new AssertionFailedError("timed out");
-            Thread.yield();
-        }
-        assertTrue(t.isAlive());
-        assertNotSame(t, lock.getOwner());
     }
 
     /**

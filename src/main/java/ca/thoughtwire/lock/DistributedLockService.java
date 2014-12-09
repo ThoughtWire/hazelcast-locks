@@ -47,59 +47,27 @@ public class DistributedLockService {
 
     /**
      * @param lockName name of the lock
-     * @return a distributed readers-writer lock
-     */
-    public ReadWriteLock getReadWriteLock(String lockName)
-    {
-        if (threadLocks.get().containsKey(lockName))
-        {
-            return threadLocks.get().get(lockName);
-        }
-        else {
-            DistributedReadWriteLock lock = new DistributedReadWriteLock(distributedDataStructureFactory, lockName);
-            threadLocks.get().put(lockName, lock);
-            return lock;
-        }
-    }
-
-    /**
-     * @param lockName name of the lock
      * @return a re-entrant distributed readers-writers lock
      */
     public ReadWriteLock getReentrantReadWriteLock(String lockName)
     {
-        if (threadReentrantLocks.get().containsKey(lockName))
+        if (THREAD_LOCKS.containsKey(lockName))
         {
-            return threadReentrantLocks.get().get(lockName);
+            return THREAD_LOCKS.get(lockName);
         }
         else {
-            DistributedReentrantReadWriteLock lock = new DistributedReentrantReadWriteLock(distributedDataStructureFactory, lockName);
-            threadReentrantLocks.get().put(lockName, lock);
+            DistributedReentrantReadWriteLock lock =
+                    new DistributedReentrantReadWriteLock(distributedDataStructureFactory, lockName);
+            THREAD_LOCKS.put(lockName, lock);
             return lock;
         }
 
     }
 
-    public static void shutdown()
-   	{
-   		threadLocks.remove();
-   		threadReentrantLocks.remove();
-   	}
 
-    static final ThreadLocal<Map<String, DistributedReadWriteLock>> threadLocks = new ThreadLocal<Map<String, DistributedReadWriteLock>>() {
-        @Override
-        protected Map<String, DistributedReadWriteLock> initialValue() {
-            return new HashMap<String, DistributedReadWriteLock>();
-        }
-    };
+    static final Map<String, DistributedReentrantReadWriteLock> THREAD_LOCKS =
+            new HashMap<String, DistributedReentrantReadWriteLock>();
 
-    static final ThreadLocal<Map<String, DistributedReentrantReadWriteLock>> threadReentrantLocks =
-            new ThreadLocal<Map<String, DistributedReentrantReadWriteLock>>() {
-        @Override
-        protected Map<String, DistributedReentrantReadWriteLock> initialValue() {
-            return new HashMap<String, DistributedReentrantReadWriteLock>();
-        }
-    };
 
     final DistributedDataStructureFactory distributedDataStructureFactory;
 }

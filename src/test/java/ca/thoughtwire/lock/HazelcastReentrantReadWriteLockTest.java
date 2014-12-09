@@ -6,6 +6,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -28,14 +29,19 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         final Config standardConfig1 = new ClasspathXmlConfig("hazelcast1.xml"),
                 standardConfig2 = new ClasspathXmlConfig("hazelcast2.xml");
 
-        standardConfig1.setProperty("hazelcast.operation.call.timeout.millis", "1000");
-        standardConfig2.setProperty("hazelcast.operation.call.timeout.millis", "1000");
+        standardConfig1.setProperty("hazelcast.operation.call.timeout.millis", "3000");
+        standardConfig2.setProperty("hazelcast.operation.call.timeout.millis", "3000");
         grid1 = Hazelcast.newHazelcastInstance(standardConfig1);
         grid2 = Hazelcast.newHazelcastInstance(standardConfig2);
 
         dataStructureFactory1 = new HazelcastDataStructureFactory(grid1);
         dataStructureFactory2 = new HazelcastDataStructureFactory(grid2);
 
+    }
+
+    @Before
+    public void setUp()
+    {
         lockService1 = new PublicDistributedLockService(dataStructureFactory1);
         lockService2 = new PublicDistributedLockService(dataStructureFactory2);
     }
@@ -85,8 +91,9 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
         waitForQueuedThread(lock, t);
         t.interrupt();
-        awaitTermination(t);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -107,8 +114,9 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
         waitForQueuedThread(lock, t);
         t.interrupt();
-        awaitTermination(t, 10 * LONG_DELAY_MS);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -126,10 +134,11 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 lock.readLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
             }});
 
-//        waitForQueuedThread(lock, t);
+        waitForQueuedThread(lock, t);
         t.interrupt();
-        awaitTermination(t, 2 * LONG_DELAY_MS);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -147,10 +156,11 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
             }});
 
-//        waitForQueuedThread(lock, t);
+        waitForQueuedThread(lock, t);
         t.interrupt();
-        awaitTermination(t, 2 * LONG_DELAY_MS);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -164,6 +174,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
          assertNotWriteLocked(lock);
 
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -194,6 +205,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
             lock.writeLock().unlock();
             assertEquals(i-1,lock.getWriteHoldCount());
         }
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -228,6 +240,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
             lock.writeLock().unlock();
             assertEquals(i-1,((DistributedReentrantReadWriteLock.WriteLock)lock.writeLock()).getHoldCount());
         }
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -243,6 +256,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         assertWriteLockedByMe(lock);
         lock.writeLock().unlock();
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
     /**
      * timed write-tryLock fails if locked
@@ -257,12 +271,15 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 try {
                     assertFalse(lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS));
                 } catch (InterruptedException ignore) {
+                    System.out.println("Caught an interrupted exception");
                     Thread.currentThread().interrupt();
                 }
             }});
 
+        waitForQueuedThread(lock, t);
         awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -282,8 +299,10 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 }
             }});
 
+        waitForQueuedThread(lock, t);
         awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -304,6 +323,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 lock.readLock().unlock();
             }});
 
+        waitForQueuedThread(lock, t);
         awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.readLock().unlock();
     }
@@ -347,7 +367,8 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 assertEquals(1, lock.getReadHoldCount());
                 lock.readLock().unlock();
             }});
-        awaitTermination(t1);
+        waitForQueuedThread(lock, t1);
+        awaitTermination(t1, 3 * LONG_DELAY_MS);
 
         Thread t2 = newStartedThread(new CheckedRunnable() {
             public void realRun() {
@@ -361,7 +382,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         lock.readLock().unlock();
         lock.readLock().unlock();
         assertEquals(0, lock.getReadHoldCount());
-        awaitTermination(t2);
+        awaitTermination(t2, 3 * LONG_DELAY_MS);
         assertNotWriteLocked(lock);
     }
 
@@ -387,8 +408,9 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         waitForQueuedThread(lock, t1);
         waitForQueuedThread(lock, t2);
         lock.writeLock().unlock();
-        awaitTermination(t1, 2 * LONG_DELAY_MS);
-        awaitTermination(t2, 2 * LONG_DELAY_MS);
+        awaitTermination(t1, 3 * LONG_DELAY_MS);
+        awaitTermination(t2, 3 * LONG_DELAY_MS);
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -402,6 +424,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         assertTrue(lock.readLock().tryLock(LONG_DELAY_MS, TimeUnit.MILLISECONDS));
         lock.readLock().unlock();
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -413,6 +436,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
+        assertWriteLockedByMe(lock);
         lock.readLock().lock();
         lock.readLock().unlock();
 
@@ -429,12 +453,13 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
         waitForQueuedThread(lock, t1);
         waitForQueuedThread(lock, t2);
-        assertWriteLockedByMe(lock);
+
         lock.readLock().lock();
         lock.readLock().unlock();
         lock.writeLock().unlock();
-        awaitTermination(t1);
-        awaitTermination(t2);
+        awaitTermination(t1, 3 * LONG_DELAY_MS);
+        awaitTermination(t2, 3 * LONG_DELAY_MS);
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -446,6 +471,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
+        assertWriteLockedByMe(lock);
         lock.readLock().lock();
         lock.readLock().unlock();
 
@@ -462,13 +488,12 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
         waitForQueuedThread(lock, t1);
         waitForQueuedThread(lock, t2);
-        assertWriteLockedByMe(lock);
         lock.readLock().lock();
         lock.readLock().unlock();
-        assertWriteLockedByMe(lock);
         lock.writeLock().unlock();
-        awaitTermination(t1);
-        awaitTermination(t2);
+        awaitTermination(t1, 3 * LONG_DELAY_MS);
+        awaitTermination(t2, 3 * LONG_DELAY_MS);
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -505,8 +530,9 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         assertWriteLockedByMe(lock);
         assertEquals(1, lock.getWriteHoldCount());
         lock.writeLock().unlock();
-        awaitTermination(t1);
-        awaitTermination(t2);
+        awaitTermination(t1, 3 * LONG_DELAY_MS);
+        awaitTermination(t2, 3 * LONG_DELAY_MS);
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -523,7 +549,8 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 lock.readLock().unlock();
             }});
 
-        awaitTermination(t);
+        waitForQueuedThread(lock,t);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.readLock().unlock();
     }
 
@@ -540,7 +567,8 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 assertFalse(lock.writeLock().tryLock(LONG_DELAY_MS, TimeUnit.MILLISECONDS));
             }});
 
-        awaitTermination(t, 2 * LONG_DELAY_MS);
+        waitForQueuedThread(lock,t);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.readLock().unlock();
     }
 
@@ -560,8 +588,10 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 assertTrue(millisElapsedSince(startTime) >= timeoutMillis);
             }});
 
-        awaitTermination(t);
+        waitForQueuedThread(lock, t);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     /**
@@ -580,9 +610,11 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
                 assertTrue(millisElapsedSince(startTime) >= timeoutMillis);
             }});
 
-        awaitTermination(t);
-        assertTrue(((PublicDistributedReentrantReadWriteLock.WriteLock)lock.writeLock()).isHeldByCurrentThread());
+        waitForQueuedThread(lock, t);
+        awaitTermination(t, 3 * LONG_DELAY_MS);
+        assertTrue(((PublicDistributedReentrantReadWriteLock.WriteLock) lock.writeLock()).isHeldByCurrentThread());
         lock.writeLock().unlock();
+        assertNotWriteLocked(lock);
     }
 
     @AfterClass
@@ -621,6 +653,6 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
     private static HazelcastInstance grid1, grid2;
     private static HazelcastDataStructureFactory dataStructureFactory1, dataStructureFactory2;
-    private static PublicDistributedLockService lockService1, lockService2;
+    private PublicDistributedLockService lockService1, lockService2;
 
 }
