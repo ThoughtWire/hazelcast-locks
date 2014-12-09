@@ -8,9 +8,7 @@ import org.junit.Test;
 import java.util.concurrent.locks.ReadWriteLock;
 
 import static ca.thoughtwire.lock.DistributedLockUtils.LocalDistributedDataStructureFactory;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * @author vanessa.williams
@@ -30,27 +28,23 @@ public class DistributedLockServiceTest {
         EasyMockSupport mockManager = new EasyMockSupport();
         HazelcastInstance hazelcastInstance = mockManager.createNiceMock(HazelcastInstance.class);
         DistributedLockService lockService = DistributedLockService.newHazelcastLockService(hazelcastInstance);
-        assertFalse(lockService == null);
     }
 
     /**
      * One lock per name per thread.
      */
     @Test
-    public void oneLockObjectPerNamePerThread()
+    public void oneLockObjectPerName()
     {
-        ReadWriteLock lock1 = lockService.getReadWriteLock("testLock");
-        ReadWriteLock lock2 = lockService.getReadWriteLock("testLock");
+        ReadWriteLock lock1 = lockService.getReentrantReadWriteLock("testLock");
+        ReadWriteLock lock2 = lockService.getReentrantReadWriteLock("testLock");
         assertTrue(lock1 == lock2);
 
         lock1.readLock().lock();
-        try {
-            lock2.readLock().lock();
-            fail("Thread should throw IllegalThreadStateException");
-        } catch (IllegalThreadStateException success) {
-        } finally {
-            lock1.readLock().unlock();
-        }
+        lock2.readLock().lock();
+
+        lock1.readLock().unlock();
+        lock2.readLock().unlock();
     }
 
     /**
@@ -62,17 +56,15 @@ public class DistributedLockServiceTest {
         DistributedLockService lockService2 =
                 new DistributedLockService(new LocalDistributedDataStructureFactory());
 
-        ReadWriteLock lock1 = lockService.getReadWriteLock("testLock");
-        ReadWriteLock lock2 = lockService2.getReadWriteLock("testLock");
+        ReadWriteLock lock1 = lockService.getReentrantReadWriteLock("testLock");
+        ReadWriteLock lock2 = lockService2.getReentrantReadWriteLock("testLock");
         assertTrue(lock1 == lock2);
         lock1.readLock().lock();
-        try {
-            lock2.readLock().lock();
-            fail("Thread should throw IllegalThreadStateException");
-        } catch (IllegalThreadStateException success) {
-        } finally {
-            lock1.readLock().unlock();
-        }
+        lock2.readLock().lock();
+
+        lock1.readLock().unlock();
+        lock2.readLock().unlock();
+
     }
 
     DistributedLockService lockService;
