@@ -1,12 +1,12 @@
 
 # Distributed Multiple Readers/Single Writer Locks using Hazelcast
 
-This library uses Hazelcast's distributed data structures to create two java.util.concurrent.locks.ReadWriteLock
-implementations. DistributedReadWriteLock is not reentrant. DistributedReentrantReadWriteLock is strongly
-reentrant (holders of write locks can acquire additional read locks.)
+This library uses Hazelcast's distributed data structures to create a java.util.concurrent.locks.ReadWriteLock
+implementation. DistributedReentrantReadWriteLock is strongly reentrant (holders of write locks can acquire additional
+read locks.)
 
 
-A running Hazelcast cluster is required. The integration tests in the test folder demonstrate a simplistic way to
+A running Hazelcast cluster is required. The tests in the test folder demonstrate a simplistic way to
 create a usable cluster of two nodes on localhost, but you can use any method you wish.
 
 ## Usage
@@ -27,9 +27,8 @@ try {
 finally {
     lock.readLock.unlock();
 }
-
 ```
 
-Note that not all methods are supported for all Lock types. For example, neither lock supports `newCondition()`, and
-the reentrant lock does not support `lockInterruptibly()`, or untimed `tryLock()` due to limitations imposed by Hazelcast's
-`ICondition.await()` method. These methods will throw UnsupportedOperationException.
+Note that not all methods are supported. For example, `newCondition()`, and untimed `tryLock()`
+(due to limitations imposed by Hazelcast's `ICondition.await()` method.) These methods will throw
+UnsupportedOperationException.
