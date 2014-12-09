@@ -7,7 +7,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 
 /**
  * @author vanessa.williams
@@ -53,18 +53,18 @@ public class HazelcastLockIT {
         public void run() {
             DistributedLockService lockService = DistributedLockService.newHazelcastLockService(grid);
             try {
-                Lock lock1, lock2, lock3, lock4;
-                lock1 = lockService.getReentrantReadWriteLock(readLock1).readLock();
-                lock2 = lockService.getReentrantReadWriteLock(readLock2).readLock();
-                lock3 = lockService.getReentrantReadWriteLock(writeLock1).writeLock();
-                lock4 = lockService.getReentrantReadWriteLock(writeLock2).writeLock();
+                ReadWriteLock lock1, lock2, lock3, lock4;
+                lock1 = lockService.getReentrantReadWriteLock(LOCK1);
+                lock2 = lockService.getReentrantReadWriteLock(LOCK2);
+                lock3 = lockService.getReentrantReadWriteLock(LOCK3);
+                lock4 = lockService.getReentrantReadWriteLock(LOCK4);
                 if (crashProcess)
                 {
                     System.out.println("Crash process acquiring locks");
-                    lock1.lock();
-                    lock2.lock();
-                    lock3.lock();
-                    lock4.lock();
+                    lock1.readLock().lock();
+                    lock2.readLock().lock();
+                    lock3.writeLock().lock();
+                    lock4.writeLock().lock();
                     System.out.println("Crash process counting down...");
                     latch.countDown();
                     System.out.println("Locks acquired");
@@ -79,16 +79,15 @@ public class HazelcastLockIT {
                     latch.countDown();
                     System.out.println("Waiting on latch...");
                     latch.await(20000, TimeUnit.MILLISECONDS);
-                    System.out.println("Acquiring locks...");
-                    lock1.lock();
-                    lock2.lock();
-                    lock3.lock();
-                    lock4.lock();
+                    lock1.readLock().lock();
+                    lock2.readLock().lock();
+                    lock3.readLock().lock();
+                    lock4.readLock().lock();
                     System.out.println("Locks acquired");
-                    lock1.unlock();
-                    lock2.unlock();
-                    lock3.unlock();
-                    lock4.unlock();
+                    lock1.readLock().unlock();
+                    lock2.readLock().unlock();
+                    lock3.readLock().unlock();
+                    lock4.readLock().unlock();
                     System.out.println("Locks released");
                     System.exit(0);
                 }
@@ -103,9 +102,9 @@ public class HazelcastLockIT {
     private HazelcastInstance grid;
     private ICountDownLatch latch;
 
-    private static final String readLock1 = "readLock1";
-    private static final String readLock2 = "readLock2";
-    private static final String writeLock1 = "writeLock1";
-    private static final String writeLock2 = "writeLock2";
+    private static final String LOCK1 = "Lock1";
+    private static final String LOCK2 = "Lock2";
+    private static final String LOCK3 = "Lock3";
+    private static final String LOCK4 = "Lock4";
 }
 
