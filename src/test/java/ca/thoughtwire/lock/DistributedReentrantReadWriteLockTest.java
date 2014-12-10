@@ -1,9 +1,7 @@
 package ca.thoughtwire.lock;
 
 import ca.thoughtwire.concurrent.DistributedDataStructureFactory;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.*;
 
 import java.util.concurrent.TimeUnit;
 
@@ -18,8 +16,8 @@ import static org.junit.Assert.*;
  */
 public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils {
 
-    @Before
-    public void setUp()
+    @BeforeClass
+    public static void setUp()
     {
         grid = new LocalDistributedDataStructureFactory();
         lockService = new DistributedLockService(grid);
@@ -32,7 +30,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void lockingUnlockedSucceeds()
     {
         PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         assertNotWriteLocked(lock);
 
         lock.writeLock().lock();
@@ -60,7 +58,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void testWriteLockInterruptibly_Interruptible()
     {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -82,7 +80,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void testReadLockInterruptibly_Interruptible()
     {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -104,7 +102,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void testTryReadLock_Interruptible()
     {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -126,7 +124,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void testTryWriteLock_Interruptible()
     {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
 
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedInterruptedRunnable() {
@@ -147,7 +145,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void testWriteLock_MSIE()
     {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         assertNotWriteLocked(lock);
 
         lock.writeLock().unlock();
@@ -160,7 +158,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     public void testReadLock_MSIE()
     {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         assertNotWriteLocked(lock);
 
         lock.readLock().unlock();
@@ -172,7 +170,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testGetWriteHoldCount() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         for (int i = 1; i <= SIZE; i++) {
             lock.writeLock().lock();
             assertEquals(i,lock.getWriteHoldCount());
@@ -190,7 +188,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testGetReadHoldCount() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         for (int i = 1; i <= SIZE; i++) {
             lock.readLock().lock();
             assertEquals(i,lock.getReadHoldCount());
@@ -207,7 +205,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testGetHoldCount() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         for (int i = 1; i <= SIZE; i++) {
             lock.writeLock().lock();
             assertEquals(i,((DistributedReentrantReadWriteLock.WriteLock)lock.writeLock()).getHoldCount());
@@ -225,7 +223,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testWriteTryLock() throws InterruptedException {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         assertTrue(lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS));
         assertWriteLockedByMe(lock);
         assertTrue(lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS));
@@ -240,7 +238,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testWriteTryLockWhenLocked() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() {
@@ -263,7 +261,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testReadTryLockWhenLocked() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() {
@@ -286,7 +284,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testMultipleReadLocks() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.readLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() throws InterruptedException {
@@ -309,7 +307,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testWriteAfterReadLock() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.readLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() {
@@ -332,7 +330,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testWriteAfterMultipleReadLocks() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.readLock().lock();
         lock.readLock().lock();
         assertEquals(2, lock.getReadHoldCount());
@@ -367,7 +365,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testReadAfterWriteLock() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         Thread t1 = newStartedThread(new CheckedRunnable() {
             public void realRun() {
@@ -394,7 +392,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testReadHoldingWriteLock() throws InterruptedException {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         assertTrue(lock.readLock().tryLock(LONG_DELAY_MS, TimeUnit.MILLISECONDS));
         lock.readLock().unlock();
@@ -409,7 +407,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testReadHoldingWriteLock2() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         lock.readLock().lock();
         lock.readLock().unlock();
@@ -443,7 +441,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testReadHoldingWriteLock3() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         lock.readLock().lock();
         lock.readLock().unlock();
@@ -478,7 +476,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testWriteHoldingWriteLock4() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         lock.writeLock().lock();
         lock.writeLock().unlock();
@@ -516,7 +514,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testTryLockWhenReadLocked() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.readLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() throws InterruptedException {
@@ -535,7 +533,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testWriteTryLockWhenReadLocked() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.readLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() throws InterruptedException {
@@ -553,7 +551,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testWriteTryLock_Timeout() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() throws InterruptedException {
@@ -575,7 +573,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test
     public void testReadTryLock_Timeout() {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().lock();
         Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() throws InterruptedException {
@@ -595,15 +593,21 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
     @Test (expected = UnsupportedOperationException.class)
     public void testUntimedTryReadLockNotSupported() throws InterruptedException {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.readLock().tryLock();
     }
 
     @Test (expected = UnsupportedOperationException.class)
     public void testUntimedTryWriteLockNotSupported() throws InterruptedException {
         final PublicDistributedReentrantReadWriteLock lock =
-                new PublicDistributedReentrantReadWriteLock(grid, "testLock");
+                new PublicDistributedReentrantReadWriteLock(lockService, "testLock");
         lock.writeLock().tryLock();
+    }
+
+    @AfterClass
+    public static void tearDown()
+    {
+        lockService.shutdown();
     }
 
     private void assertNotWriteLocked(PublicDistributedReentrantReadWriteLock lock)
@@ -633,7 +637,7 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
         assertEquals(count, lock.getHoldCount());
     }
 
-    DistributedDataStructureFactory grid;
-    DistributedLockService lockService;
+    static DistributedDataStructureFactory grid;
+    static DistributedLockService lockService;
 
 }

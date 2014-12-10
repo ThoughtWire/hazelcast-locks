@@ -70,8 +70,9 @@ public class HazelcastLockIT {
                     System.out.println("Locks acquired");
                     System.out.println("Waiting on latch...");
                     latch.await(20000, TimeUnit.MILLISECONDS);
-                    System.out.println("Exiting normally");
-                    System.exit(0);
+                    System.out.println("Exiting abnormally");
+//                    System.exit(0);
+                    throw new NullPointerException();
                 }
                 else
                 {

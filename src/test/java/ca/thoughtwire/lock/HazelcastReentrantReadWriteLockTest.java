@@ -34,16 +34,11 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
         grid1 = Hazelcast.newHazelcastInstance(standardConfig1);
         grid2 = Hazelcast.newHazelcastInstance(standardConfig2);
 
-        dataStructureFactory1 = new HazelcastDataStructureFactory(grid1);
-        dataStructureFactory2 = new HazelcastDataStructureFactory(grid2);
+        dataStructureFactory1 = HazelcastDataStructureFactory.getInstance(grid1);
+        dataStructureFactory2 = HazelcastDataStructureFactory.getInstance(grid2);
 
-    }
-
-    @Before
-    public void setUp()
-    {
-        lockService1 = new PublicDistributedLockService(dataStructureFactory1);
-        lockService2 = new PublicDistributedLockService(dataStructureFactory2);
+        lockService1 = new DistributedLockUtils().new PublicDistributedLockService(dataStructureFactory1);
+        lockService2 = new DistributedLockUtils().new PublicDistributedLockService(dataStructureFactory2);
     }
 
     /**
@@ -620,6 +615,8 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @AfterClass
     public static void tearDown()
     {
+        lockService1.shutdown();
+        lockService2.shutdown();
         grid1.shutdown();
         grid2.shutdown();
     }
@@ -653,6 +650,6 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
     private static HazelcastInstance grid1, grid2;
     private static HazelcastDataStructureFactory dataStructureFactory1, dataStructureFactory2;
-    private PublicDistributedLockService lockService1, lockService2;
+    private static PublicDistributedLockService lockService1, lockService2;
 
 }

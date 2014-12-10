@@ -4,6 +4,8 @@ import ca.thoughtwire.concurrent.*;
 import junit.framework.AssertionFailedError;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -31,8 +33,8 @@ public class DistributedLockUtils {
      */
     public class PublicDistributedReentrantReadWriteLock extends DistributedReentrantReadWriteLock
     {
-        public PublicDistributedReentrantReadWriteLock(DistributedDataStructureFactory grid, String lockName) {
-            super(grid, lockName);
+        public PublicDistributedReentrantReadWriteLock(DistributedLockService lockService, String lockName) {
+            super(lockService, lockName);
         }
 
         /**
@@ -94,7 +96,7 @@ public class DistributedLockUtils {
                 return THREAD_LOCKS.get(lockName);
             } else {
                 PublicDistributedReentrantReadWriteLock lock =
-                        new PublicDistributedReentrantReadWriteLock(distributedDataStructureFactory, lockName);
+                        new PublicDistributedReentrantReadWriteLock(this, lockName);
                 THREAD_LOCKS.put(lockName, lock);
                 return lock;
             }
@@ -227,29 +229,168 @@ public class DistributedLockUtils {
 
     }
 
+    public static class LocalMultiMap<K, V> implements DistributedMultiMap<K, V>
+    {
+        public LocalMultiMap(String name)
+        {
+            this.name = name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public Collection<V> get(K key) {
+            return backingMap.get(key);
+        }
+
+        @Override
+        public boolean put(K key, V value) {
+            backingMap.putIfAbsent(key, new ArrayList<V>());
+            synchronized (backingMap) {
+                Collection<V> values = backingMap.get(key);
+                final boolean exists = values.contains(value);
+                if (!exists) {
+                    values.add(value);
+                }
+                return !exists;
+            }
+        }
+
+        @Override
+        public Collection<V> remove(Object key) {
+            return backingMap.remove(key);
+        }
+
+        @Override
+        public boolean remove(Object key, Object value) {
+            synchronized (backingMap) {
+                Collection<V> values = backingMap.get(key);
+                return values.remove(value);
+            }
+        }
+
+        @Override
+        public void clear() {
+            backingMap.clear();
+        }
+
+        @Override
+        public boolean containsKey(K key) {
+            return backingMap.containsKey(key);
+        }
+
+        @Override
+        public boolean containsValue(Object value) {
+            for (Collection<V> values: backingMap.values())
+            {
+                if (values.contains(value))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public Set<K> keySet() {
+            return backingMap.keySet();
+        }
+
+        @Override
+        public int size() {
+            int size = 0;
+            for (Collection<V> values: backingMap.values())
+            {
+                size += values.size();
+            }
+            return size;
+        }
+
+        @Override
+        public Collection<V> values() {
+            Collection<V> results = new ArrayList<V>();
+            for (Collection<V> values: backingMap.values())
+            {
+                results.addAll(values);
+            }
+            return results;
+        }
+
+        private final String name;
+
+        private final ConcurrentMap<K, Collection<V>> backingMap = new ConcurrentHashMap<K, Collection<V>>();
+    }
+
     public static class LocalDistributedDataStructureFactory implements DistributedDataStructureFactory
     {
         public LocalDistributedDataStructureFactory() {}
 
         @Override
         public DistributedSemaphore getSemaphore(String name, int initPermits) {
-            return new LocalSemaphore(name, initPermits);
+            semaphoreMap.putIfAbsent(name, new LocalSemaphore(name, initPermits));
+            return semaphoreMap.get(name);
         }
 
         @Override
         public DistributedAtomicLong getAtomicLong(String name) {
-            return new LocalAtomicLong(name);
+            atomicLongMap.putIfAbsent(name, new LocalAtomicLong(name));
+            return atomicLongMap.get(name);
         }
 
         @Override
         public Lock getLock(String name) {
-            return new LocalLock(name);
+            lockMap.putIfAbsent(name, new LocalLock(name));
+            return lockMap.get(name);
+        }
+
+        /*
+         * This is pretty dangerous and stupid, but as it's only for testing
+         * and we only use multimaps in one place, it *should* work.
+         */
+        @Override
+        public DistributedMultiMap<Object, Object> getMultiMap(String name) {
+            multiMapMap.putIfAbsent(name, new LocalMultiMap<Object, Object>(name));
+            return multiMapMap.get(name);
         }
 
         @Override
         public Condition getCondition(Lock lock, String conditionName) {
-            return lock.newCondition();
+            final String key = ((LocalLock) lock).getName() + ":" + conditionName;
+            conditionMap.putIfAbsent(key, lock.newCondition());
+            return conditionMap.get(key);
         }
+
+        @Override
+        public String getNodeId() {
+            return nodeId;
+        }
+
+        @Override
+        public void addMembershipListener(GridMembershipListener listener) {
+            listeners.add(listener);
+        }
+
+        @Override
+        public void removeMembershipListener(GridMembershipListener listener) {
+            listeners.remove(listener);
+        }
+
+        @Override
+        public Collection<GridMembershipListener> getListeners() {
+            return Collections.unmodifiableCollection(listeners);
+        }
+
+        private final String nodeId = UUID.randomUUID().toString();
+        protected final List<GridMembershipListener> listeners =
+                Collections.synchronizedList(new ArrayList<GridMembershipListener>());
+        private final ConcurrentMap<String, LocalAtomicLong> atomicLongMap = new ConcurrentHashMap<String, LocalAtomicLong>();
+        private final ConcurrentMap<String, LocalSemaphore> semaphoreMap = new ConcurrentHashMap<String, LocalSemaphore>();
+        private final ConcurrentMap<String, LocalLock> lockMap = new ConcurrentHashMap<String, LocalLock>();
+        private final ConcurrentMap<String, Condition> conditionMap = new ConcurrentHashMap<String, Condition>();
+        private final ConcurrentMap<String, LocalMultiMap<Object, Object>> multiMapMap = new ConcurrentHashMap<String, LocalMultiMap<Object, Object>>();
     }
 
     /**

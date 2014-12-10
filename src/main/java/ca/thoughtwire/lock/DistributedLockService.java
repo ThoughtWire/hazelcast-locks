@@ -1,11 +1,15 @@
 package ca.thoughtwire.lock;
 
-import ca.thoughtwire.concurrent.DistributedDataStructureFactory;
-import ca.thoughtwire.concurrent.HazelcastDataStructureFactory;
+import ca.thoughtwire.concurrent.*;
 import com.hazelcast.core.HazelcastInstance;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
 /**
@@ -13,7 +17,25 @@ import java.util.concurrent.locks.ReadWriteLock;
  *
  * @author vanessa.williams
  */
-public class DistributedLockService {
+public class DistributedLockService implements GridMembershipListener {
+
+    /**
+     * Static factory method for creating a lock service instance.
+     *
+     * @param distributedDataStructureFactory factory for distributed data structures
+     * @return a new lock service instance
+     */
+    public static DistributedLockService newLockService(DistributedDataStructureFactory distributedDataStructureFactory)
+    {
+        if (distributedDataStructureFactory == null)
+        {
+            throw new IllegalArgumentException("DistributedDataStructureFactory argument is required.");
+        }
+        final DistributedLockService distributedLockService =
+                new DistributedLockService(distributedDataStructureFactory);
+        distributedLockService.getDistributedDataStructureFactory().addMembershipListener(distributedLockService);
+        return distributedLockService;
+    }
 
     /**
      * Convenience static factory method for creating a lock factory using Hazelcast.
@@ -28,21 +50,30 @@ public class DistributedLockService {
         {
             throw new IllegalArgumentException("HazelcastInstance argument is required.");
         }
-        return new DistributedLockService(new HazelcastDataStructureFactory(hazelcastInstance));
+        final HazelcastDataStructureFactory dataStructureFactory = HazelcastDataStructureFactory.getInstance(hazelcastInstance);
+        return newLockService(dataStructureFactory);
     }
 
-    /**
+    /*
      * Constructor.
+     *
+     * The constructor is protected because a static factory method is required in order to
+     * prevent the "this" reference from escaping during construction (see Java Concurrency
+     * in Practice, Section 3.2.1 Safe construction practices)
      *
      * @param distributedDataStructureFactory factory for creating distributed semaphores and atomic primitives
      */
-    public DistributedLockService(DistributedDataStructureFactory distributedDataStructureFactory)
+    protected DistributedLockService(DistributedDataStructureFactory distributedDataStructureFactory)
     {
         if (distributedDataStructureFactory == null)
         {
             throw new IllegalArgumentException("DistributedDataStructureFactory argument is required.");
         }
         this.distributedDataStructureFactory = distributedDataStructureFactory;
+        this.nodeId = distributedDataStructureFactory.getNodeId();
+        this.nodesToExclusiveLocks = distributedDataStructureFactory.getMultiMap(getLockMapName());
+        this.lockServiceLock = distributedDataStructureFactory.getLock(getServiceLockName());
+        this.iAmCleanUpNode = lockServiceLock.tryLock();
     }
 
     /**
@@ -56,18 +87,98 @@ public class DistributedLockService {
             return THREAD_LOCKS.get(lockName);
         }
         else {
-            DistributedReentrantReadWriteLock lock =
-                    new DistributedReentrantReadWriteLock(distributedDataStructureFactory, lockName);
+            DistributedReentrantReadWriteLock lock = new DistributedReentrantReadWriteLock(this, lockName);
             THREAD_LOCKS.put(lockName, lock);
             return lock;
         }
 
     }
 
+    protected void addNodeLock(String lockName)
+    {
+        nodesToExclusiveLocks.put(nodeId, lockName);
+    }
 
-    static final Map<String, DistributedReentrantReadWriteLock> THREAD_LOCKS =
+    protected void removeNodeLock(String lockName)
+    {
+        nodesToExclusiveLocks.remove(nodeId, lockName);
+    }
+
+    /**
+     * @return data structure factory (grid)
+     */
+    public DistributedDataStructureFactory getDistributedDataStructureFactory()
+    {
+        return distributedDataStructureFactory;
+    }
+
+    @Override
+    public void memberAdded(String uuid) {
+        // NO OP
+    }
+
+    @Override
+    public void memberRemoved(final String uuid) {
+        // ensure that only one node does the cleanup activity
+        iAmCleanUpNode = lockServiceLock.tryLock();
+        if (iAmCleanUpNode) {
+            executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    releaseLocks(uuid);
+                }
+            });
+        }
+    }
+
+    public void shutdown()
+    {
+        if (!shutdown) {
+            shutdown = true;
+            if (iAmCleanUpNode) {
+                lockServiceLock.unlock();
+            }
+            distributedDataStructureFactory.removeMembershipListener(this);
+            executorService.shutdown();
+            try {
+                executorService.awaitTermination(TIMEOUT, UNIT);
+            } catch (InterruptedException ignore) {
+                // we're shutting down anyway
+            }
+        }
+    }
+
+    private void releaseLocks(String uuid)
+    {
+        Collection<String> locksHeldByNode = nodesToExclusiveLocks.get(uuid);
+        for (String lockName: locksHeldByNode)
+        {
+            DistributedReentrantReadWriteLock lock = (DistributedReentrantReadWriteLock)getReentrantReadWriteLock(lockName);
+            lock.forceUnlock();
+        }
+    }
+
+    private static String getLockMapName() { return PREFIX + "exclusiveLocks"; }
+
+    private static String getServiceLockName() { return PREFIX + "lockServiceSingleton"; }
+
+    private static final String PREFIX = "HZLOCK_";
+
+    private static final Map<String, DistributedReentrantReadWriteLock> THREAD_LOCKS =
             new HashMap<String, DistributedReentrantReadWriteLock>();
 
+    /* Structures used to release locks held by crashed nodes */
+    private final String nodeId;
+    private final DistributedMultiMap<String, String> nodesToExclusiveLocks;
+    private final Lock lockServiceLock;
+    private boolean iAmCleanUpNode;
+
+    /* for responding to membership events */
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private static final long TIMEOUT = 2000;
+    private static final TimeUnit UNIT = TimeUnit.MILLISECONDS;
+
+    private volatile boolean shutdown = false;
 
     final DistributedDataStructureFactory distributedDataStructureFactory;
 }
