@@ -16,9 +16,9 @@ import java.util.concurrent.locks.Lock;
  */
 public class HazelcastDataStructureFactory implements DistributedDataStructureFactory, MembershipListener {
 
-    public static HazelcastDataStructureFactory getInstance(HazelcastInstance hazelcastInstance)
+    public static HazelcastDataStructureFactory getInstance(final HazelcastInstance hazelcastInstance)
     {
-        HazelcastDataStructureFactory factory = new HazelcastDataStructureFactory(hazelcastInstance);
+        final HazelcastDataStructureFactory factory = new HazelcastDataStructureFactory(hazelcastInstance);
         hazelcastInstance.getCluster().addMembershipListener(factory);
         return factory;
     }
@@ -30,36 +30,36 @@ public class HazelcastDataStructureFactory implements DistributedDataStructureFa
      *
      * @param hazelcastInstance
      */
-    private HazelcastDataStructureFactory(HazelcastInstance hazelcastInstance)
+    private HazelcastDataStructureFactory(final HazelcastInstance hazelcastInstance)
     {
         this.hazelcastInstance = hazelcastInstance;
         this.nodeId = hazelcastInstance.getCluster().getLocalMember().getUuid();
     }
 
     @Override
-    public DistributedSemaphore getSemaphore(String name, int initPermits) {
-        ISemaphore semaphore = hazelcastInstance.getSemaphore(name);
+    public DistributedSemaphore getSemaphore(final String name, final int initPermits) {
+        final ISemaphore semaphore = hazelcastInstance.getSemaphore(name);
         semaphore.init(initPermits);
         return new HazelcastSemaphore(semaphore);
     }
 
     @Override
-    public DistributedAtomicLong getAtomicLong(String name) {
+    public DistributedAtomicLong getAtomicLong(final String name) {
         return new HazelcastAtomicLong(hazelcastInstance.getAtomicLong(name));
     }
 
     @Override
-    public <K, V> DistributedMultiMap<K, V> getMultiMap(String name) {
+    public <K, V> DistributedMultiMap<K, V> getMultiMap(final String name) {
         return new HazelcastMultiMap<K, V>(hazelcastInstance, name);
     }
 
     @Override
-    public Lock getLock(String name) {
+    public Lock getLock(final String name) {
         return hazelcastInstance.getLock(name);
     }
 
     @Override
-    public Condition getCondition(Lock lock, String conditionName) {
+    public Condition getCondition(final Lock lock, final String conditionName) {
         return ((ILock)lock).newCondition(conditionName);
     }
 
@@ -69,12 +69,12 @@ public class HazelcastDataStructureFactory implements DistributedDataStructureFa
     }
 
     @Override
-    public void addMembershipListener(GridMembershipListener listener) {
+    public void addMembershipListener(final GridMembershipListener listener) {
         listeners.add(listener);
     }
 
     @Override
-    public void removeMembershipListener(GridMembershipListener listener) {
+    public void removeMembershipListener(final GridMembershipListener listener) {
         listeners.remove(listener);
     }
 
@@ -84,7 +84,7 @@ public class HazelcastDataStructureFactory implements DistributedDataStructureFa
     }
 
     @Override
-    public void memberAdded(MembershipEvent membershipEvent) {
+    public void memberAdded(final MembershipEvent membershipEvent) {
         final String uuid = membershipEvent.getMember().getUuid();
         for (GridMembershipListener listener: getListeners())
         {
@@ -93,7 +93,7 @@ public class HazelcastDataStructureFactory implements DistributedDataStructureFa
     }
 
     @Override
-    public void memberRemoved(MembershipEvent membershipEvent) {
+    public void memberRemoved(final MembershipEvent membershipEvent) {
         final String uuid = membershipEvent.getMember().getUuid();
         for (GridMembershipListener listener: getListeners())
         {
@@ -102,7 +102,7 @@ public class HazelcastDataStructureFactory implements DistributedDataStructureFa
     }
 
     @Override
-    public void memberAttributeChanged(MemberAttributeEvent memberAttributeEvent) {
+    public void memberAttributeChanged(final MemberAttributeEvent memberAttributeEvent) {
         // NOOP
     }
 

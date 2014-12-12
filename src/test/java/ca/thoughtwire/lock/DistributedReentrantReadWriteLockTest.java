@@ -1,7 +1,10 @@
 package ca.thoughtwire.lock;
 
 import ca.thoughtwire.concurrent.DistributedDataStructureFactory;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
 

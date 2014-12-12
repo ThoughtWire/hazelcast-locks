@@ -63,6 +63,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
      * is forcibly unlocked this way, it cannot be used again in the same
      * VM. Therefore it should only be used when the VM is going/gone away
      * for good.
+     * @see {DistributedLockService#releaseLocks()}
      */
     protected void forceUnlock()
     {

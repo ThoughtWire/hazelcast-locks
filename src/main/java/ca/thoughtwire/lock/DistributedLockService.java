@@ -1,6 +1,9 @@
 package ca.thoughtwire.lock;
 
-import ca.thoughtwire.concurrent.*;
+import ca.thoughtwire.concurrent.DistributedDataStructureFactory;
+import ca.thoughtwire.concurrent.DistributedMultiMap;
+import ca.thoughtwire.concurrent.GridMembershipListener;
+import ca.thoughtwire.concurrent.HazelcastDataStructureFactory;
 import com.hazelcast.core.HazelcastInstance;
 
 import java.util.Collection;
@@ -25,7 +28,8 @@ public class DistributedLockService implements GridMembershipListener {
      * @param distributedDataStructureFactory factory for distributed data structures
      * @return a new lock service instance
      */
-    public static DistributedLockService newLockService(DistributedDataStructureFactory distributedDataStructureFactory)
+    public static DistributedLockService newLockService(
+            final DistributedDataStructureFactory distributedDataStructureFactory)
     {
         if (distributedDataStructureFactory == null)
         {
@@ -44,13 +48,14 @@ public class DistributedLockService implements GridMembershipListener {
      * @param hazelcastInstance  the grid instance
      * @return A DistributedLockService based on a HazelcastDataStructureFactory.
      */
-    public static DistributedLockService newHazelcastLockService(HazelcastInstance hazelcastInstance)
+    public static DistributedLockService newHazelcastLockService(final HazelcastInstance hazelcastInstance)
     {
         if (hazelcastInstance == null)
         {
             throw new IllegalArgumentException("HazelcastInstance argument is required.");
         }
-        final HazelcastDataStructureFactory dataStructureFactory = HazelcastDataStructureFactory.getInstance(hazelcastInstance);
+        final HazelcastDataStructureFactory dataStructureFactory =
+                HazelcastDataStructureFactory.getInstance(hazelcastInstance);
         return newLockService(dataStructureFactory);
     }
 
@@ -63,7 +68,7 @@ public class DistributedLockService implements GridMembershipListener {
      *
      * @param distributedDataStructureFactory factory for creating distributed semaphores and atomic primitives
      */
-    protected DistributedLockService(DistributedDataStructureFactory distributedDataStructureFactory)
+    protected DistributedLockService(final DistributedDataStructureFactory distributedDataStructureFactory)
     {
         if (distributedDataStructureFactory == null)
         {
@@ -79,26 +84,26 @@ public class DistributedLockService implements GridMembershipListener {
      * @param lockName name of the lock
      * @return a re-entrant distributed readers-writers lock
      */
-    public ReadWriteLock getReentrantReadWriteLock(String lockName)
+    public ReadWriteLock getReentrantReadWriteLock(final String lockName)
     {
         if (THREAD_LOCKS.containsKey(lockName))
         {
             return THREAD_LOCKS.get(lockName);
         }
         else {
-            DistributedReentrantReadWriteLock lock = new DistributedReentrantReadWriteLock(this, lockName);
+            final DistributedReentrantReadWriteLock lock = new DistributedReentrantReadWriteLock(this, lockName);
             THREAD_LOCKS.put(lockName, lock);
             return lock;
         }
 
     }
 
-    protected void addNodeLock(String lockName)
+    protected void addNodeLock(final String lockName)
     {
         nodesToExclusiveLocks.put(nodeId, lockName);
     }
 
-    protected void removeNodeLock(String lockName)
+    protected void removeNodeLock(final String lockName)
     {
         nodesToExclusiveLocks.remove(nodeId, lockName);
     }
@@ -112,7 +117,7 @@ public class DistributedLockService implements GridMembershipListener {
     }
 
     @Override
-    public void memberAdded(String uuid) {
+    public void memberAdded(final String uuid) {
         // NO OP
     }
 
@@ -137,9 +142,6 @@ public class DistributedLockService implements GridMembershipListener {
     {
         if (!shutdown) {
             shutdown = true;
-            if (iAmCleanUpNode) {
-                lockServiceLock.unlock();
-            }
             distributedDataStructureFactory.removeMembershipListener(this);
             executorService.shutdown();
             try {
@@ -150,12 +152,13 @@ public class DistributedLockService implements GridMembershipListener {
         }
     }
 
-    private void releaseLocks(String uuid)
+    private void releaseLocks(final String uuid)
     {
-        Collection<String> locksHeldByNode = nodesToExclusiveLocks.get(uuid);
+        final Collection<String> locksHeldByNode = nodesToExclusiveLocks.get(uuid);
         for (String lockName: locksHeldByNode)
         {
-            DistributedReentrantReadWriteLock lock = (DistributedReentrantReadWriteLock)getReentrantReadWriteLock(lockName);
+            final DistributedReentrantReadWriteLock lock =
+                    (DistributedReentrantReadWriteLock)getReentrantReadWriteLock(lockName);
             lock.forceUnlock();
         }
     }
@@ -173,7 +176,6 @@ public class DistributedLockService implements GridMembershipListener {
     private final String nodeId;
     private final DistributedMultiMap<String, String> nodesToExclusiveLocks;
     private final Lock lockServiceLock;
-    private boolean iAmCleanUpNode;
 
     /* for responding to membership events */
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();

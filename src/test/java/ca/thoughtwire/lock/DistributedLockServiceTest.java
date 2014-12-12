@@ -41,7 +41,7 @@ public class DistributedLockServiceTest {
      * Two factories return the same lock.
      */
     @Test
-    public void testMultipleFactories()
+    public void testMultipleServices()
     {
         DistributedLockService lockService2 =
                 new DistributedLockService(new LocalDistributedDataStructureFactory());

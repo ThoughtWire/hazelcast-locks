@@ -47,7 +47,7 @@ public interface DistributedDataStructureFactory {
      * @param name the map name
      * @param <K> the key type
      * @param <V> the value type
-     * @return a named ConcurrentMap
+     * @return a named MultiMap
      */
     <K,V> DistributedMultiMap<K,V> getMultiMap(String name);
 
