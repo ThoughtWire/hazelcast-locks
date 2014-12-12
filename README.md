@@ -27,6 +27,9 @@ try {
 finally {
     lock.readLock.unlock();
 }
+
+// shutting down the lock service cleans up
+lockService.shutdown();
 ```
 
 Note that not all methods are supported. For example, `newCondition()`, and untimed `tryLock()`
