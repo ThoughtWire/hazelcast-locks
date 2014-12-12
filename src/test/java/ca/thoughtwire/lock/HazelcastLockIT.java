@@ -40,6 +40,7 @@ public class HazelcastLockIT {
         {
             standardConfig = new ClasspathXmlConfig("hazelcast2.xml");
         }
+        standardConfig.setProperty("hazelcast.operation.call.timeout.millis", "3000");
         grid = Hazelcast.newHazelcastInstance(standardConfig);
         latch = grid.getCountDownLatch("crash_lock");
         latch.trySetCount(2);
@@ -70,9 +71,8 @@ public class HazelcastLockIT {
                     System.out.println("Locks acquired");
                     System.out.println("Waiting on latch...");
                     latch.await(20000, TimeUnit.MILLISECONDS);
-                    System.out.println("Exiting abnormally");
-//                    System.exit(0);
-                    throw new NullPointerException();
+                    System.out.println("Exiting");
+                    System.exit(1);
                 }
                 else
                 {
@@ -80,16 +80,20 @@ public class HazelcastLockIT {
                     latch.countDown();
                     System.out.println("Waiting on latch...");
                     latch.await(20000, TimeUnit.MILLISECONDS);
+                    System.out.println("Latch wait finished, acquiring locks on crashed read locks...");
                     lock1.readLock().lock();
                     lock2.readLock().lock();
+                    System.out.println("Read locks acquired, acquiring locks on crashed write locks...");
                     lock3.readLock().lock();
-                    lock4.readLock().lock();
+                    lock4.writeLock().lock();
                     System.out.println("Locks acquired");
                     lock1.readLock().unlock();
                     lock2.readLock().unlock();
                     lock3.readLock().unlock();
-                    lock4.readLock().unlock();
+                    lock4.writeLock().unlock();
                     System.out.println("Locks released");
+                    lockService.shutdown();
+                    grid.getLifecycleService().shutdown();
                     System.exit(0);
                 }
             }

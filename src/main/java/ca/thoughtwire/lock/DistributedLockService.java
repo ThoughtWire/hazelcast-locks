@@ -73,7 +73,6 @@ public class DistributedLockService implements GridMembershipListener {
         this.nodeId = distributedDataStructureFactory.getNodeId();
         this.nodesToExclusiveLocks = distributedDataStructureFactory.getMultiMap(getLockMapName());
         this.lockServiceLock = distributedDataStructureFactory.getLock(getServiceLockName());
-        this.iAmCleanUpNode = lockServiceLock.tryLock();
     }
 
     /**
@@ -120,14 +119,17 @@ public class DistributedLockService implements GridMembershipListener {
     @Override
     public void memberRemoved(final String uuid) {
         // ensure that only one node does the cleanup activity
-        iAmCleanUpNode = lockServiceLock.tryLock();
-        if (iAmCleanUpNode) {
-            executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    releaseLocks(uuid);
-                }
-            });
+        if (lockServiceLock.tryLock()) {
+            try {
+                executorService.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        releaseLocks(uuid);
+                    }
+                });
+            } finally {
+                lockServiceLock.unlock();
+            }
         }
     }
 
@@ -181,4 +183,5 @@ public class DistributedLockService implements GridMembershipListener {
     private volatile boolean shutdown = false;
 
     final DistributedDataStructureFactory distributedDataStructureFactory;
+
 }
