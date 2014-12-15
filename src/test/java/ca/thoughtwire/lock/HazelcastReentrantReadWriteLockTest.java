@@ -20,8 +20,7 @@ import static org.junit.Assert.*;
 public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
     @BeforeClass
-    public static void createGrids()
-    {
+    public static void createGrids() throws InterruptedException {
 		/* Suppress Hazelcast log output to standard error which does not appear to be suppressible via Agent Server's
 		 * log4j.xml. */
 //        ConsoleOutputSuppressor.suppressStandardError();
@@ -46,6 +45,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @Test
     public void lockingUnlockedSucceeds()
     {
+        System.out.println("lockingUnlockSucceeds");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         assertNotWriteLocked(lock);
@@ -74,6 +74,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @Test
     public void testWriteLockInterruptibly_Interruptible()
     {
+        System.out.println("testWriteLockInterruptibly_Interruptible");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
 
@@ -97,6 +98,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @Test
     public void testReadLockInterruptibly_Interruptible()
     {
+        System.out.println("testReadLockInterruptibly_Interruptible");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
 
@@ -119,11 +121,12 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @Test
     public void testTryReadLock_Interruptible()
     {
+        System.out.println("testTryReadLock_Interruptible");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
 
         lock.writeLock().lock();
-        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+        Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() throws InterruptedException {
                 lock.readLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
             }});
@@ -141,11 +144,12 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @Test
     public void testTryWriteLock_Interruptible()
     {
+        System.out.println("testTryWriteLock_Interruptible");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
 
         lock.writeLock().lock();
-        Thread t = newStartedThread(new CheckedInterruptedRunnable() {
+        Thread t = newStartedThread(new CheckedRunnable() {
             public void realRun() throws InterruptedException {
                 lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS);
             }});
@@ -163,6 +167,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @Test (expected = IllegalMonitorStateException.class)
     public void testWriteLock_MSIE()
     {
+        System.out.println("testWriteLock_MSIE");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
          assertNotWriteLocked(lock);
@@ -177,6 +182,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
     @Test (expected = IllegalMonitorStateException.class)
     public void testReadLock_MSIE()
     {
+        System.out.println("testReadLock_MSIE");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         assertNotWriteLocked(lock);
@@ -189,6 +195,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testGetWriteHoldCount() {
+        System.out.println("testGetWriteHoldCount");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         for (int i = 1; i <= SIZE; i++) {
@@ -207,6 +214,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testGetReadHoldCount() {
+        System.out.println("testGetReadHoldCount");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         for (int i = 1; i <= SIZE; i++) {
@@ -224,6 +232,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testGetHoldCount() {
+        System.out.println("testGetHoldCount");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         for (int i = 1; i <= SIZE; i++) {
@@ -242,6 +251,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testWriteTryLock() throws InterruptedException {
+        System.out.println("testWriteTryLock");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         assertTrue(lock.writeLock().tryLock(2 * LONG_DELAY_MS, TimeUnit.MILLISECONDS));
@@ -257,6 +267,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testWriteTryLockWhenLocked() {
+        System.out.println("testWriteTryLockWhenLocked");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -281,6 +292,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testReadTryLockWhenLocked() {
+        System.out.println("testReadTryLockWhenLocked");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -304,6 +316,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testMultipleReadLocks() {
+        System.out.println("testMultipleReadLocks");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.readLock().lock();
@@ -327,6 +340,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testWriteAfterReadLock() {
+        System.out.println("testWriteAfterReadLock");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.readLock().lock();
@@ -350,6 +364,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testWriteAfterMultipleReadLocks() {
+        System.out.println("testWriteAfterMultipleReadLocks");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.readLock().lock();
@@ -385,6 +400,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testReadAfterWriteLock() {
+        System.out.println("testReadAfterWriteLock");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -412,6 +428,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testReadHoldingWriteLock() throws InterruptedException {
+        System.out.println("testReadHoldingWriteLock");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -427,6 +444,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testReadHoldingWriteLock2() {
+        System.out.println("testReadHoldingWriteLock2");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -462,6 +480,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testReadHoldingWriteLock3() {
+        System.out.println("testReadHoldingWriteLock3");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -496,6 +515,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testWriteHoldingWriteLock4() {
+        System.out.println("testWriteHoldingWriteLock4");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -534,6 +554,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testTryLockWhenReadLocked() {
+        System.out.println("testTryLockWhenReadLocked");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.readLock().lock();
@@ -553,6 +574,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testWriteTryLockWhenReadLocked() {
+        System.out.println("testWriteTryLockWhenReadLocked");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.readLock().lock();
@@ -571,6 +593,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testWriteTryLock_Timeout() {
+        System.out.println("testWriteTryLock_Timeout");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();
@@ -593,6 +616,7 @@ public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
      */
     @Test
     public void testReadTryLock_Timeout() {
+        System.out.println("testReadTryLock_Timeout");
         final PublicDistributedReentrantReadWriteLock lock =
                 (PublicDistributedReentrantReadWriteLock)lockService1.getReentrantReadWriteLock("testLock");
         lock.writeLock().lock();

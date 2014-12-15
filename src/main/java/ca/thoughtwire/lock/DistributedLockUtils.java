@@ -491,7 +491,8 @@ public class DistributedLockUtils {
 
         public long remainingMillis()
         {
-            return completedMillis - System.currentTimeMillis();
+            long remainingMillis = completedMillis - System.currentTimeMillis();
+            return remainingMillis >= 0 ? remainingMillis : 0;
         }
 
         private final long completedMillis;
