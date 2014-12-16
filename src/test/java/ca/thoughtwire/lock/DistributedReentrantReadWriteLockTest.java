@@ -343,7 +343,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 assertEquals(1, lock.getReadHoldCount());
                 lock.readLock().unlock();
             }});
-        waitForQueuedThread(lock, t1);
         awaitTermination(t1);
 
         Thread t2 = newStartedThread(new CheckedRunnable() {

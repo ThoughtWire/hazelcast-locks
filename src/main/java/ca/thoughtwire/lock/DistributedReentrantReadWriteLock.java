@@ -6,6 +6,7 @@ import net.jcip.annotations.ThreadSafe;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -389,7 +390,7 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
         final DistributedAtomicLong writersWaiting, isWriteLocked, numberOfThreads;
 
         /* local threads waiting on a lock; useful for debugging */
-        final Collection<Thread> queuedThreads = new ArrayList<Thread>();
+        final Collection<Thread> queuedThreads = Collections.synchronizedCollection(new ArrayList<Thread>());
         long writeLockedBy = NONE;
 
     }
