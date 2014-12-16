@@ -148,6 +148,7 @@ public class DistributedLockService implements GridMembershipListener {
                 executorService.awaitTermination(TIMEOUT, UNIT);
             } catch (InterruptedException ignore) {
                 // we're shutting down anyway
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -161,6 +162,7 @@ public class DistributedLockService implements GridMembershipListener {
                     (DistributedReentrantReadWriteLock)getReentrantReadWriteLock(lockName);
             lock.forceUnlock();
         }
+        nodesToExclusiveLocks.remove(uuid);
     }
 
     private static String getLockMapName() { return PREFIX + "exclusiveLocks"; }
