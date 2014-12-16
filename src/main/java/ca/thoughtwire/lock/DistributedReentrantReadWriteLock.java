@@ -390,7 +390,6 @@ public class DistributedReentrantReadWriteLock implements ReadWriteLock {
 
         /* local threads waiting on a lock; useful for debugging */
         final Collection<Thread> queuedThreads = new ArrayList<Thread>();
-//        int numberOfThreads = 0;
         long writeLockedBy = NONE;
 
     }

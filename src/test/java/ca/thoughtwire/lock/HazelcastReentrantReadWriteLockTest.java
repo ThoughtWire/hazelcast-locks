@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
 public class HazelcastReentrantReadWriteLockTest extends DistributedLockUtils {
 
     @BeforeClass
-    public static void createGrids() throws InterruptedException {
+    public static void createGrids() {
 		/* Suppress Hazelcast log output to standard error which does not appear to be suppressible via Agent Server's
 		 * log4j.xml. */
 //        ConsoleOutputSuppressor.suppressStandardError();
