@@ -13,6 +13,7 @@ public class HazelcastSemaphore implements DistributedSemaphore {
 
     private final ISemaphore delegate;
 
+    @Override
     public String getName()
     {
         return delegate.getName();

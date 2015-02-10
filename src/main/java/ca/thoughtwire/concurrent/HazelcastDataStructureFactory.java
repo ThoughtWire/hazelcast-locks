@@ -69,7 +69,8 @@ public class HazelcastDataStructureFactory implements DistributedDataStructureFa
     }
 
     @Override
-    public void addMembershipListener(final GridMembershipListener listener) {
+    public void addMembershipListener(final GridMembershipListener listener)
+    {
         listeners.add(listener);
     }
 

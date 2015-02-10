@@ -5,11 +5,13 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
+import org.junit.Ignore;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
+@Ignore
 public class HazelcastLockIT {
 
     public static void main(String[] args) {
@@ -53,6 +55,7 @@ public class HazelcastLockIT {
                 if (writeLock.tryLock(100, TimeUnit.MILLISECONDS)) {
                     try {
                         System.out.println("...writeLock acquired");
+                        System.out.println("FAILURE.");
                         try {
                             // in lieu of doing something...
                             Thread.sleep(1000 * 2);
@@ -66,8 +69,8 @@ public class HazelcastLockIT {
                 }
                 else
                 {
-                    System.out.println("...try writeLock timed out as expected.");
-                    System.out.println("Success.");
+                    System.out.println("...try writeLock timed out.");
+                    System.out.println("SUCCESS.");
                 }
             } catch (Exception e) {
                 e.printStackTrace();

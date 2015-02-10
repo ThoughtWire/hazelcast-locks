@@ -320,6 +320,11 @@ public class DistributedLockUtils {
             return results;
         }
 
+        @Override
+        public int valueCount(K key) {
+            return get(key).size();
+        }
+
         private final String name;
 
         private final ConcurrentMap<K, Collection<V>> backingMap = new ConcurrentHashMap<K, Collection<V>>();
@@ -347,13 +352,13 @@ public class DistributedLockUtils {
             return lockMap.get(name);
         }
 
-        /*
-         * This is pretty dangerous and stupid, but as it's only for testing
-         * and we only use multimaps in one place, it *should* work.
+        /**
+         * These multimaps unfortunately use raw types. Use with care.
          */
         @Override
-        public DistributedMultiMap<Object, Object> getMultiMap(String name) {
-            multiMapMap.putIfAbsent(name, new LocalMultiMap<Object, Object>(name));
+        public <K,V> DistributedMultiMap<K,V> getMultiMap(String name) {
+            multiMapMap.putIfAbsent(name, new LocalMultiMap<K,V>(name));
+            //noinspection unchecked
             return multiMapMap.get(name);
         }
 
@@ -391,7 +396,7 @@ public class DistributedLockUtils {
         private final ConcurrentMap<String, LocalSemaphore> semaphoreMap = new ConcurrentHashMap<String, LocalSemaphore>();
         private final ConcurrentMap<String, LocalLock> lockMap = new ConcurrentHashMap<String, LocalLock>();
         private final ConcurrentMap<String, Condition> conditionMap = new ConcurrentHashMap<String, Condition>();
-        private final ConcurrentMap<String, LocalMultiMap<Object, Object>> multiMapMap = new ConcurrentHashMap<String, LocalMultiMap<Object, Object>>();
+        private final ConcurrentMap<String, LocalMultiMap> multiMapMap = new ConcurrentHashMap<String, LocalMultiMap>();
     }
 
     /**
@@ -411,6 +416,23 @@ public class DistributedLockUtils {
         while (!lock.hasQueuedThread(t)) {
             if (millisElapsedSince(startTime) > LONG_DELAY_MS)
                 throw new AssertionFailedError("timed out");
+            Thread.yield();
+        }
+        assertTrue(t.isAlive());
+    }
+
+    /**
+     * Spin-waits until lock.hasQueuedThread(t) becomes true.
+     */
+    public void waitForQueuedThread(DistributedReentrantReadWriteLock lock, Thread t)
+    {
+        long startTime = System.nanoTime();
+        while (!lock.hasQueuedThread(t))
+        {
+            if (millisElapsedSince(startTime) > LONG_DELAY_MS)
+            {
+                throw new AssertionFailedError("timed out");
+            }
             Thread.yield();
         }
         assertTrue(t.isAlive());

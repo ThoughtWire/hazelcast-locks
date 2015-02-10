@@ -66,4 +66,9 @@ public class HazelcastMultiMap<K,V> implements DistributedMultiMap<K,V> {
     public void clear() {
         delegate.clear();
     }
+
+    @Override
+    public int valueCount(K key) {
+        return delegate.valueCount(key);
+    }
 }

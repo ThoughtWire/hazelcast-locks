@@ -64,4 +64,14 @@ public interface DistributedMultiMap<K,V> {
      * @see com.hazelcast.core.MultiMap#values()
      */
     public Collection<V> values();
+
+    /**
+     * Same as get(key).size(), but may be more efficient.
+     * @see com.hazelcast.core.MultiMap#valueCount(K key)
+     *
+     * @param key key
+     * @return size of values() collection
+     */
+    public int valueCount(K key);
+
 }

@@ -5,6 +5,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ICountDownLatch;
+import org.junit.Ignore;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -12,6 +13,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 /**
  * @author vanessa.williams
  */
+@Ignore
 public class HazelcastLockFaultToleranceIT {
 
     public static void main(String[] args)

@@ -252,7 +252,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 }
             }});
 
-        waitForQueuedThread(lock, t);
         awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
         assertNotWriteLocked(lock);
@@ -275,7 +274,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 }
             }});
 
-        waitForQueuedThread(lock, t);
         awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.writeLock().unlock();
         assertNotWriteLocked(lock);
@@ -299,7 +297,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 lock.readLock().unlock();
             }});
 
-        waitForQueuedThread(lock, t);
         awaitTermination(t, 3 * LONG_DELAY_MS);
         lock.readLock().unlock();
     }
@@ -524,7 +521,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 lock.readLock().unlock();
             }});
 
-        waitForQueuedThread(lock, t);
         awaitTermination(t, 2 * LONG_DELAY_MS);
         lock.readLock().unlock();
     }
@@ -542,7 +538,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 assertFalse(lock.writeLock().tryLock(LONG_DELAY_MS, TimeUnit.MILLISECONDS));
             }});
 
-        waitForQueuedThread(lock, t);
         awaitTermination(t, 2 * LONG_DELAY_MS);
         lock.readLock().unlock();
     }
@@ -563,7 +558,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 assertTrue(millisElapsedSince(startTime) >= timeoutMillis);
             }});
 
-        waitForQueuedThread(lock, t);
         awaitTermination(t);
         lock.writeLock().unlock();
         assertNotWriteLocked(lock);
@@ -585,7 +579,6 @@ public class DistributedReentrantReadWriteLockTest extends DistributedLockUtils 
                 assertTrue(millisElapsedSince(startTime) >= timeoutMillis);
             }});
 
-        waitForQueuedThread(lock, t);
         awaitTermination(t);
         assertTrue(((PublicDistributedReentrantReadWriteLock.WriteLock)lock.writeLock()).isHeldByCurrentThread());
         lock.writeLock().unlock();
